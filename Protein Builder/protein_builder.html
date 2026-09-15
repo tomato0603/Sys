@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protein Builder</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --text:#16191d; --muted:#6b7280;
+  --line:#e2e5ea; --line-strong:#c9cfd8; --accent:#4E67C8; --accent-weak:#EAEDF8;
+  --ok:#1c7c47; --ok-weak:#e6f4ec; --warn:#a35b00; --warn-weak:#fdf1e0; --danger:#b3261e; --danger-weak:#fdeceb;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --radius:8px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14161a; --panel:#1c1f24; --panel-2:#202429; --text:#e8eaed; --muted:#9aa3af;
+    --line:#2e333b; --line-strong:#454c56; --accent:#8FA1E3; --accent-weak:#20263F;
+    --ok:#5ec27f; --ok-weak:#1b2a21; --warn:#e0a458; --warn-weak:#2c2418; --danger:#f08c85; --danger-weak:#2e1d1c;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 20px 0;position:sticky;top:0;z-index:20}
+h1{margin:0 0 2px;font-size:16px;font-weight:650;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:12px;margin-bottom:10px}
+nav{display:flex;gap:4px}
+nav button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 14px;font:inherit;font-weight:550;color:var(--muted);cursor:pointer;border-radius:6px 6px 0 0}
+nav button:hover{background:var(--panel-2);color:var(--text)}
+nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+main{padding:18px 20px 60px;max-width:1400px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:13px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:180px}
+label.f{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+input[type=text],input[type=number],textarea,select{background:var(--panel-2);color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:6px 9px;font:inherit}
+input[type=number]{width:78px}
+textarea{width:100%;font-family:var(--mono);font-size:12px;resize:vertical}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--text);padding:6px 12px}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+button.primary:hover{filter:brightness(1.08);color:#fff}
+button.ghost{border-color:transparent;background:none;color:var(--muted);padding:4px 7px}
+button.ghost:hover{background:var(--panel-2);color:var(--accent)}
+button.danger:hover{border-color:var(--danger);color:var(--danger)}
+button:disabled{opacity:.45;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:6px 8px;white-space:nowrap}
+/* 見出し行は画面上部（サイト見出しの真下）に貼り付けて、スクロールしても項目名が見えるようにする。
+ * 下線は border ではなく影で引く。sticky の最中に border が消えるブラウザがあるため。
+ * z-index はサイト見出し（20）より下、表の中身より上。 */
+thead th{position:sticky;top:var(--hdr,150px);z-index:6;background:var(--panel);
+  box-shadow:inset 0 -1px 0 var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.mono{font-family:var(--mono);font-size:12px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.pdb{background:var(--accent-weak);border-color:transparent;color:var(--accent)}
+.tag.up{background:var(--ok-weak);border-color:transparent;color:var(--ok)}
+.tag.dna{background:var(--warn-weak);border-color:transparent;color:var(--warn)}
+.hint{font-size:12px;color:var(--muted)}
+.drop{border:2px dashed var(--line-strong);border-radius:var(--radius);padding:22px;text-align:center;color:var(--muted);background:var(--panel-2);cursor:pointer}
+.drop.hot{border-color:var(--accent);background:var(--accent-weak);color:var(--accent)}
+.gather{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
+.gather-l,.gather-r{min-width:0}
+@media (max-width:1000px){.gather{grid-template-columns:1fr}}
+.split{display:grid;grid-template-columns:270px minmax(0,1fr) 270px;gap:14px;align-items:start}
+@media (max-width:1200px){.split{grid-template-columns:250px minmax(0,1fr)}.split>.pal-lk{grid-column:1/-1}}
+@media (max-width:900px){.split{grid-template-columns:1fr}.split>.pal-lk{grid-column:auto}}
+.pal{position:sticky;top:calc(var(--hdr,150px) + 14px);max-height:calc(100vh - var(--hdr,150px) - 34px);overflow:auto}
+.pal-item{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin-bottom:5px;background:var(--panel-2)}
+.pal-item .nm{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td .memo{display:block;font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:2px;white-space:normal}
+.pal-item .memo{display:block;font-size:11px;color:var(--muted);white-space:normal;line-height:1.45;margin-top:2px}
+.pal-item .nm{white-space:normal}
+.palname{cursor:pointer;border-bottom:1px dotted var(--line-strong)}
+.palname:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.palseq{display:block;margin-top:4px;font-size:10.5px;line-height:1.5;color:var(--muted);
+  word-break:break-all;white-space:normal;background:var(--panel);border:1px solid var(--line);
+  border-radius:4px;padding:4px 6px;max-height:150px;overflow:auto}
+.con{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;background:var(--panel)}
+.con-hd{display:flex;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--panel-2);border-radius:var(--radius) var(--radius) 0 0}
+.con-hd input[type=text]{font-weight:600;flex:1;min-width:120px}
+.con.fold .con-bd{display:none}
+.con-hd .fold-btn{font-family:var(--mono);width:26px;text-align:center}
+.con-bd{padding:10px 12px}
+.el{display:flex;gap:8px;align-items:center;padding:7px 9px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;background:var(--panel-2)}
+.el.linker{border-style:dashed}
+.el.ins-before{box-shadow:0 -3px 0 -1px var(--accent)}
+.el.ins-after{box-shadow:0 3px 0 -1px var(--accent)}
+.els.drop-target{outline:1px dashed var(--line-strong);outline-offset:3px;border-radius:6px}
+.el.dragging{opacity:.4}
+.handle{cursor:grab;color:var(--muted);user-select:none;font-size:15px;line-height:1;
+  padding:4px 5px;margin:-4px -1px;border-radius:4px;flex:none}
+.handle:hover{background:var(--panel);color:var(--accent)}
+.handle:active{cursor:grabbing}
+.handle.locked{cursor:default;opacity:.4}
+.handle.locked:hover{background:none;color:var(--muted)}
+.el .nm{flex:1;min-width:80px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.el{flex-wrap:wrap}
+.seqprev{flex-basis:100%;font-family:var(--mono);font-size:11.5px;line-height:1.6;
+  padding:3px 0 0 28px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seqprev b{color:var(--text);font-weight:600}
+.seqprev .dimres{color:var(--muted);opacity:.55}
+.seqprev .cutmark{color:var(--accent);font-weight:700;margin:0 1px}
+.seqprev .ell{color:var(--muted);font-size:10.5px;letter-spacing:0}
+.swatch{width:10px;height:20px;border-radius:3px;flex:none}
+.seqbox{font-family:var(--mono);font-size:12.5px;line-height:1.75;word-break:break-all;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px;max-height:320px;overflow:auto}
+.seqbox span{border-radius:2px;padding:1px 0}
+.stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0}
+.stats b{color:var(--text);font-weight:600}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;margin:8px 0}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:baseline}
+/* リンカーは三角で見分ける。色ではなく形で区別できるようにするため */
+.legend i.lk{width:0;height:0;border-radius:0;background:none!important;
+  border-left:5px solid transparent;border-right:5px solid transparent;
+  border-bottom-width:9px;border-bottom-style:solid;vertical-align:-1px}
+/* 常時表示のバックアップ状況 */
+.hdr-top{display:flex;align-items:flex-start;gap:16px;justify-content:space-between;flex-wrap:wrap}
+.hdr-store{display:flex;gap:6px;flex-wrap:wrap;flex:none;padding-top:2px}
+.hdr-store button{font-size:12.5px;padding:5px 10px}
+.strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;
+  padding:7px 0 9px;margin-top:2px;border-top:1px solid var(--line);color:var(--muted)}
+/* 確認モーダル */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;
+  align-items:center;justify-content:center;z-index:120;padding:20px}
+#modal.on{display:flex}
+#modal-box{background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;
+  width:min(760px,100%);max-height:86vh;overflow:auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.28)}
+#modal-box h4{margin:0 0 4px;font-size:14px;font-weight:650}
+#modal-box .hint{margin-bottom:10px}
+/* 「2. 繋ぎ合わせる」の中央＝作業台。ここが Build を組む場所だと分かるようにする */
+.bench{border:1px solid var(--accent);border-radius:10px;background:var(--accent-weak);padding:10px 10px 12px}
+.bench-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 4px 9px}
+.bench-title{font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--accent)}
+.bench-gauge{display:flex;gap:3px;align-items:center}
+.bench-gauge i{width:9px;height:16px;border-radius:2px;background:var(--accent);display:block}
+.bench-gauge i.arch{background:var(--line-strong)}
+.bench-gauge i.more{width:auto;height:auto;background:none;color:var(--muted);font-size:11px;font-style:normal}
+.bench-count{font-size:12px;color:var(--text)}
+.bench-count b{font-size:15px;color:var(--accent)}
+.bench-arch{font-size:11.5px}
+.bench-tools{margin-bottom:10px}
+.bench .con{background:var(--panel)}
+.menu-wrap{position:relative}
+#more-menu{position:absolute;right:0;top:calc(100% + 5px);z-index:130;background:var(--panel);
+  border:1px solid var(--line-strong);border-radius:8px;padding:5px;min-width:190px;
+  box-shadow:0 10px 28px rgba(0,0,0,.22)}
+#more-menu[hidden]{display:none}
+#more-menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:5px}
+#more-menu button:hover{background:var(--panel-2);color:var(--danger)}
+#more-menu .mi-note{padding:2px 10px 7px;color:var(--muted);font-size:11.5px;line-height:1.5}
+.guide{display:flex;flex-direction:column;min-height:340px}
+.g-head{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
+.g-step{font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:600}
+.g-title{margin:3px 0 0;font-size:19px;font-weight:700}
+.g-body{flex:1}
+.g-what{margin:0 0 10px;color:var(--text)}
+.g-foot{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.g-dots{flex:1;display:flex;gap:6px;justify-content:center}
+.gdot{width:8px;height:8px;padding:0;border-radius:50%;border:1px solid var(--line-strong);background:none;cursor:pointer}
+.gdot.on{background:var(--accent);border-color:var(--accent)}
+.g-nav{display:flex;gap:6px}
+.help h4{margin:18px 0 6px;font-size:13.5px}
+.help h4:first-of-type{margin-top:6px}
+.help ul{margin:0 0 4px;padding-left:1.2em}
+.help li{margin-bottom:5px;line-height:1.6}
+.help .step{background:var(--panel-2);border-left:2px solid var(--accent);border-radius:5px;padding:9px 12px;margin:0 0 8px}
+.warnbar{display:flex;gap:8px;align-items:flex-start;background:var(--warn-weak);color:var(--warn);
+  border:1px solid var(--warn);border-radius:6px;padding:8px 11px;margin:8px 0;font-size:12.5px;line-height:1.6}
+.tag.odd{background:var(--warn-weak);color:var(--warn);border-color:var(--warn)}
+.cf{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:8px;background:var(--panel-2)}
+.cf-seq{font-size:12px;color:var(--muted);margin-bottom:7px}
+.cf-opt{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer}
+.cf-opt em{font-style:normal;font-size:11px;color:var(--muted)}
+.cf-opt input[type=text]{width:210px}
+.cf-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;
+  border-top:1px solid var(--line);padding-top:14px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:9px 18px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.18s;z-index:99}
+#toast.on{opacity:1;transform:translateX(-50%)}
+tr.arch td,.con.arch .con-hd,.pal-item.arch{opacity:.55}
+.sw-wrap{display:none;gap:3px;flex-wrap:wrap;max-width:120px}
+td.colorcell:hover .sw-wrap,.sw-wrap.open{display:inline-flex}
+td.colorcell:hover .sw-cur{display:none}
+.sw{width:13px;height:13px;border-radius:3px;border:1px solid var(--line-strong);padding:0;cursor:pointer;background:none}
+.sw.on{outline:2px solid var(--accent);outline-offset:1px}
+input.sw-any{-webkit-appearance:none;appearance:none;border:1px solid var(--line-strong);background:none}
+input.sw-any::-webkit-color-swatch-wrapper{padding:1px}
+input.sw-any::-webkit-color-swatch{border:0;border-radius:2px}
+.crule{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.crule input[type=text]{width:150px}
+.crule input[type=color]{width:34px;height:26px;padding:1px;border:1px solid var(--line-strong);border-radius:5px;background:none}
+.sw-cur{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid var(--line-strong)}
+.nmbtn{cursor:pointer;border-bottom:1px dotted var(--line-strong);padding:1px 0}
+.nmbtn:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.dotcol{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;flex:none}
+.tag.arch{background:var(--warn-weak);border-color:transparent;color:var(--warn)}
+.empty{color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--line-strong);border-radius:6px}
+details{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:8px;background:var(--panel-2)}
+summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:550}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line-strong);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr-top">
+    <div>
+      <h1>Protein Builder</h1>
+      <div class="sub">AlphaFoldへの配列を作る</div>
+    </div>
+    <div class="hdr-store">
+      <button id="btn-export">SYSTEM SAVE (.json)</button>
+      <button id="btn-import">SYSTEM UPLOAD (.json)</button>
+      <button id="btn-help" title="使い方を見る" aria-label="ヘルプ">？</button>
+      <span class="menu-wrap">
+        <button id="btn-more" title="その他" aria-haspopup="true" aria-expanded="false">⋯</button>
+        <div id="more-menu" hidden>
+          <button class="danger" id="btn-reset">すべて消去</button>
+          <div class="mi-note">ライブラリと Build をすべて捨てます。取り消せません。</div>
+        </div>
+      </span>
+      <input type="file" id="imp-file" accept=".json,application/json" hidden>
+    </div>
+  </div>
+  <nav>
+    <button data-tab="t1" class="on">1. 配列を集める</button>
+    <button data-tab="t2">2. 繋ぎ合わせる</button>
+    <button data-tab="t3">3. 出力</button>
+  </nav>
+  <div id="backup-strip" class="strip"></div>
+</header>
+
+<main>
+<!-- ============ TAB 1 ============ -->
+<section id="t1" class="tab on">
+ <div class="gather">
+  <div class="gather-l">
+  <div class="card">
+    <h2>PDB を検索</h2>
+    <div class="row" style="margin-bottom:8px">
+      <label class="f"><input type="radio" name="smode" value="text" checked> キーワード</label>
+      <label class="f"><input type="radio" name="smode" value="id"> PDB ID 直接</label>
+    </div>
+    <div id="sw-text">
+      <div class="row">
+        <input type="text" id="q-text" class="grow" placeholder="例: ankyrin repeat domain / SH3 / calmodulin binding">
+        <label class="f">件数 <input type="number" id="q-rows" value="25" min="1" max="100"></label>
+        <button class="primary" id="btn-search">検索</button>
+      </div>
+    </div>
+    <div id="sw-id" style="display:none">
+      <div class="row">
+        <input type="text" id="q-id" class="grow" placeholder="例: 4O6X, 1AA2, 6XYZ（カンマ／空白区切り・複数可）">
+        <button class="primary" id="btn-fetch-id">取得</button>
+      </div>
+    </div>
+    <div id="search-status" class="hint" style="margin-top:8px"></div>
+    <div id="search-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>ファイルを読み込む（ApE・GenBank・FASTA）</h2>
+    <div class="drop" id="drop">ファイルをここにドロップ<br><span class="hint">または　クリックして選択</span></div>
+    <input type="file" id="file" accept=".fasta,.fa,.faa,.seq,.txt,.ape,.gb,.gbk,.gbf,.genbank,text/plain" multiple hidden>
+    <div class="hint" style="margin-top:10px">
+      <b>ApE（.ape）／GenBank</b> — 注釈された領域を一覧に出します。
+    </div>
+    <div id="orf-res"></div>
+  </div>
+  </div>
+
+  <div class="gather-r">
+  <div class="card">
+    <h2>手入力で追加</h2>
+    <div class="row" style="margin-bottom:6px">
+      <input type="text" id="m-name" class="grow" placeholder="名前（例: ANK repeat 1-4）">
+    </div>
+    <textarea id="m-seq" rows="8" placeholder="アミノ酸配列または塩基配列を貼り付け（空白・改行・数字は無視されます）"></textarea>
+    <div class="row" style="margin-top:6px"><button class="primary" id="btn-manual">ライブラリに追加</button></div>
+  </div>
+  </div>
+ </div>
+
+  <div class="card">
+    <h2>ドメインライブラリ <span id="lib-count" class="tag"></span></h2>
+    <div class="row" style="margin:-4px 0 10px">
+      <input type="text" id="lib-find" placeholder="名称・メモ・配列で絞り込む" style="width:230px">
+      <label class="f">並べ替え
+        <select id="lib-sort">
+          <option value="added">追加日</option>
+          <option value="name">名前</option>
+          <option value="len">長さ</option>
+          <option value="seq">配列</option>
+        </select></label>
+      <label class="f"><input type="checkbox" id="lib-desc" checked> 降順</label>
+      <span style="flex:1"></span>
+      <label class="f"><input type="checkbox" id="lib-arch"> アーカイブも表示 <span id="lib-arch-n" class="hint"></span></label>
+    </div>
+    <div id="lib-list"></div>
+    <details id="crules-box" style="margin-top:10px">
+      <summary>色の規則 <span id="crules-n" class="tag"></span></summary>
+      <div class="hint" style="margin:6px 0 8px">
+        名前に<b>この文字が入っていたらこの色</b>、という決まりです。追加したときに<b>上から順に照合し、最初に当たった色</b>を使います。
+        どれにも当たらなければ、まだ使われていない色が配られます。大文字小文字は区別しません。
+      </div>
+      <div id="crules"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="btn-crule-add">＋ 規則を追加</button>
+        <button id="btn-crule-apply">いまある配列にも当てはめる</button>
+      </div>
+      <div class="hint" style="margin-top:6px">
+        規則を変えても、すでに入っている配列の色は<b>そのままです</b>。
+        まとめて揃えたいときだけ「いまある配列にも当てはめる」を押してください
+        （手で選んだ色も、規則に当たれば上書きされます）。
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>リンカーライブラリ <span id="lk-count" class="tag"></span></h2>
+    <div class="row" style="margin:-4px 0 10px">
+      <input type="text" id="lk-name" placeholder="名称（例: 長い柔軟リンカー）" style="width:210px">
+      <input type="text" id="lk-seq" class="mono" placeholder="配列（例: GGGGSGGGGSGGGGSGGGGS）" style="width:270px">
+      <input type="text" id="lk-note" class="grow" placeholder="メモ（任意）">
+      <button class="primary" id="btn-lk-add">追加</button>
+      <span style="flex:1"></span>
+      <label class="f">並べ替え
+        <select id="lk-sort">
+          <option value="added">追加日</option>
+          <option value="name">名称</option>
+          <option value="len">長さ</option>
+        </select></label>
+      <label class="f"><input type="checkbox" id="lk-desc"> 降順</label>
+    </div>
+    <div id="lk-list"></div>
+  </div>
+</section>
+
+<!-- ============ TAB 2 ============ -->
+<section id="t2" class="tab">
+  <div class="split">
+    <div class="card pal">
+      <h2>ドメイン <span id="palp-count" class="tag"></span></h2>
+      <div class="hint" style="margin-bottom:8px">「＋」で選択中の Build の末尾に追加</div>
+      <input type="text" id="palp-find" placeholder="名称・メモ・配列で絞り込む" style="width:100%;margin-bottom:8px">
+      <div id="palette"></div>
+    </div>
+    <div class="bench">
+      <div class="bench-hd">
+        <span class="bench-title">Build を組む</span>
+        <span class="bench-gauge" id="con-gauge" aria-hidden="true"></span>
+        <span class="bench-count"><b id="con-live-n">0</b> 本を作成中</span>
+        <span class="bench-arch hint" id="con-arch-note"></span>
+      </div>
+      <div class="card bench-tools">
+        <div class="row">
+          <button class="primary" id="btn-new-con">＋ Build</button>
+          <button id="btn-fold-all">すべてたたむ</button>
+          <button id="btn-unfold-all">すべて開く</button>
+          <label class="f"><input type="checkbox" id="con-arch2"> アーカイブも表示</label>
+          <span class="hint">要素は行をドラッグ、または ↑ ↓ で並べ替えできます。</span>
+        </div>
+      </div>
+      <div id="cons"></div>
+    </div>
+
+    <div class="card pal pal-lk">
+      <h2>リンカー <span id="lkp-count" class="tag"></span></h2>
+      <div class="hint" style="margin-bottom:8px">「＋」で選択中の Build の末尾に追加</div>
+      <input type="text" id="lkp-find" placeholder="名称・メモ・配列で絞り込む" style="width:100%;margin-bottom:8px">
+      <div id="palette-lk"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TAB 3 ============ -->
+<section id="t3" class="tab">
+  <div class="card">
+    <div class="row">
+      <button id="btn-dl-all">全 Build を FASTA でダウンロード</button>
+      <label class="f">FASTA 折返し <input type="number" id="wrap" value="60" min="0" max="200"> 文字（0 で折返しなし）</label>
+      <span style="flex:1"></span>
+      <label class="f"><input type="checkbox" id="con-arch"> アーカイブも表示 <span id="con-arch-n" class="hint"></span></label>
+    </div>
+    <div class="hint" style="margin-top:8px">「配列をコピー」はヘッダ・改行なしの生配列を返します。</div>
+  </div>
+  <div id="out"></div>
+</section>
+
+<div class="card" style="max-width:1400px;margin:0 auto 40px">
+  <h2>システムリクエスト <span id="rq-count" class="tag"></span></h2>
+  <div class="hint" style="margin-bottom:8px">
+    直してほしいこと・足してほしいことを書き溜めておく欄です。<b>「未対応をコピー」</b>で全文を写して Claude に渡してください。
+  </div>
+  <div class="row" style="margin-bottom:10px;align-items:flex-start">
+    <textarea id="rq-text" rows="2" class="grow" placeholder="例: 出力タブで配列を 10 残基ごとに区切って表示したい"></textarea>
+    <button class="primary" id="btn-rq-add">追加</button>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <button id="btn-rq-copy">未対応をコピー</button>
+    <button id="btn-rq-dl">.md で保存</button>
+    <button id="btn-rq-mail">メールで送る</button>
+    <label class="f"><input type="checkbox" id="rq-done"> 対応済みも表示 <span id="rq-done-n" class="hint"></span></label>
+  </div>
+  <div id="rq-list"></div>
+
+</div>
+</main>
+
+<div id="modal"><div id="modal-box"><div id="modal-body"></div></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   定数
+   ============================================================ */
+const CODON = (()=>{
+  const b="TCAG", aa="FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG";
+  const t={}; let i=0;
+  for(const x of b) for(const y of b) for(const z of b) t[x+y+z]=aa[i++];
+  return t;
+})();
+const AA_MW={A:71.0788,R:156.1875,N:114.1038,D:115.0886,C:103.1388,E:129.1155,Q:128.1307,G:57.0519,
+  H:137.1411,I:113.1594,L:113.1594,K:128.1741,M:131.1926,F:147.1766,P:97.1167,S:87.0782,T:101.1051,
+  W:186.2132,Y:163.1760,V:99.1326,U:150.0388,O:237.3018};
+const AA_SET=new Set(Object.keys(AA_MW).concat(["X","B","Z","J"]));
+/** AlphaFold に渡せるのは標準 20 種だけ。X・B・Z・J・U・O もここでは「扱えない文字」に含める */
+const AA20=new Set("ACDEFGHIKLMNPQRSTVWY");
+/** 標準 20 種と終止記号以外を数える。無ければ null */
+function oddChars(seq){
+  const m=new Map();
+  for(const ch of String(seq||"")) if(ch!=="*" && !AA20.has(ch)) m.set(ch,(m.get(ch)||0)+1);
+  if(!m.size) return null;
+  const chars=[...m.keys()].sort();
+  return { chars, n:chars.reduce((t,c)=>t+m.get(c),0),
+           text:chars.map(c=>c+" "+m.get(c)+" 個").join("・") };
+}
+const PALETTE=["#2f6fd0","#1c7c47","#a35b00","#8e44ad","#0f7d8c","#b3261e","#5b6ab0","#6b8e23","#c2185b","#00796b"];
+/** ライブラリ項目に付けられる色。追加時に未使用のものが自動で割り当てられる */
+/* PowerPoint テーマ「スリップストリーム」の配色。
+ * テーマの色はスライドの塗り用なので、白地の小さな文字にすると読めない
+ * （黄緑 #A7EA52 は白の上で 1.44:1）。色相はそのままに、白地で 4.5:1 に届く明度へ落としてある。
+ * 括弧内がテーマの元の値。 */
+const SWATCHES=[
+  "#4E67C8",   // 青   accent1（そのまま。5.12:1）
+  "#0D80A9",   // 水色 accent2（#5ECCF3）
+  "#518410",   // 黄緑 accent3（#A7EA52）
+  "#28856C",   // 青緑 accent4（#5DCEAF）
+  "#C55400",   // 橙   accent5（#FF8021）
+  "#E42D0F",   // 赤   accent6（#F14124）
+  "#212745"    // 濃紺 dk2（そのまま。14.58:1）
+];
+const LINKERS_DEFAULT=[
+  {label:"GS",              seq:"GS",                   note:"最短のつなぎ。制限酵素部位（BamHI）に由来することが多い"},
+  {label:"(GGGGS)×1",       seq:"GGGGS",                note:"柔軟リンカーの 1 単位。ごく短く繋ぎたいとき"},
+  {label:"(GGGGS)×2",       seq:"GGGGSGGGGS",           note:"柔軟リンカー 2 単位"},
+  {label:"(GGGGS)×3  柔軟", seq:"GGGGSGGGGSGGGGS",      note:"最も広く使われる汎用の柔軟リンカー。ドメイン間に自由度を持たせたいとき"},
+  {label:"(GGGGS)×4",       seq:"GGGGSGGGGSGGGGSGGGGS",note:"さらに長い柔軟リンカー。ドメイン同士を離したいとき"},
+  {label:"(GGGS)×3",        seq:"GGGSGGGSGGGS",         note:"GGGGS よりわずかに短い柔軟リンカー"},
+  {label:"(EAAAK)×3  剛直", seq:"EAAAKEAAAKEAAAK",      note:"αヘリックスを作る剛直リンカー。ドメイン間の距離と向きを保ちたいとき"},
+  {label:"(AP)×5  剛直",    seq:"APAPAPAPAP",           note:"プロリンに富む剛直リンカー。伸びた形をとる"},
+  {label:"XTEN 16",         seq:"SGSETPGTSESATPES",     note:"親水性が高く凝集しにくい柔軟リンカー"},
+  {label:"TEV 切断部位",     seq:"ENLYFQG",              note:"TEV プロテアーゼが ENLYFQ↓G で切る。切断後に G が残る"},
+  {label:"3C/PreScission",  seq:"LEVLFQGP",             note:"HRV 3C プロテアーゼが LEVLFQ↓GP で切る。低温で働く"},
+  {label:"Thrombin",        seq:"LVPRGS",               note:"トロンビンが LVPR↓GS で切る"},
+  {label:"His×6 タグ",      seq:"HHHHHH",               note:"ニッケルアフィニティ精製用。N 末・C 末どちらにも置ける"},
+  {label:"His×6 + TEV",     seq:"HHHHHHENLYFQG",        note:"精製後にタグを切り離す構成"},
+  {label:"Myc タグ",        seq:"EQKLISEEDL",           note:"抗体検出用のエピトープタグ"},
+  {label:"FLAG タグ",       seq:"DYKDDDDK",             note:"抗体検出・精製用のエピトープタグ"},
+  {label:"HA タグ",         seq:"YPYDVPDYA",            note:"抗体検出用のエピトープタグ"},
+  {label:"Strep-tag II",    seq:"WSHPQFEK",             note:"Strep-Tactin での穏やかな精製に使う"}
+];
+
+/* ============================================================
+   状態
+   ============================================================ */
+const KEY="protein-domain-builder/v2";
+const KEY_V1="protein-domain-builder/v1";
+let state={library:[], constructs:[], activeCon:null, lastBackupAt:null, lastChangeAt:null, linkers:null, requests:[]};
+/** 使えるリンカー一覧。未設定なら既定を使う */
+function linkers(){
+  if(!Array.isArray(state.linkers))
+    state.linkers = LINKERS_DEFAULT.map(l=>normLinker(l));
+  else
+    state.linkers = state.linkers.map(l=>normLinker(l));   // 古い形（label/seq だけ）も引き上げる
+  return state.linkers;
+}
+/** リンカー 1 件の形を整える */
+function normLinker(l){
+  const seq=cleanSeq(l.seq||"");
+  return {
+    id: l.id || nid("k"),
+    label: String(l.label||seq||"linker").trim() || "linker",
+    seq,
+    note: String(l.note||""),
+    addedAt: l.addedAt || null,
+    updatedAt: l.updatedAt || null
+  };
+}
+function linkerById(id){ return linkers().find(l=>l.id===id); }
+/** 中身を変えたときは変更日を進める */
+function touchLinker(l){ l.updatedAt=Date.now(); }
+let storageOK=true;
+let uid=Date.now()%1e7;
+const nid=p=>p+"_"+(++uid).toString(36);
+
+/** 内容を変えたときはこちら（最終変更日時を進める）
+ *  バックアップと同じミリ秒に変更が起きても「変更あり」を取りこぼさないよう、
+ *  必ず最終バックアップ日時より後になるようにする */
+function save(){
+  const now=Date.now();
+  state.lastChangeAt = (state.lastBackupAt && now<=state.lastBackupAt) ? state.lastBackupAt+1 : now;
+  writeStore();
+}
+/** 変更として扱わずに書き込むだけ（バックアップ日時の記録など） */
+function writeStore(){
+  if(storageOK){
+    try{
+      localStorage.setItem(KEY, JSON.stringify({
+        library:state.library, constructs:state.constructs, linkers:state.linkers,
+        requests:state.requests, colorRules:colorRules(),
+        lastBackupAt:state.lastBackupAt, lastChangeAt:state.lastChangeAt
+      }));
+    }catch(e){ storageOK=false; noteStorage(); }
+  }
+  renderBackupStrip();
+}
+/** 外から来たデータを、描画側が前提とする形に整える。
+ *  integrate() を通らない経路（置き換え・v1 移行）でも必ずここを通す */
+/** 色の規則を読み戻す。無ければ既定（Tag → 青）。色は #rrggbb だけ受ける */
+function normRules(list){
+  if(!Array.isArray(list)) return null;
+  const out=list.filter(r=>r&&String(r.text||"").trim())
+    .map(r=>({ id:r.id||nid("cr"), text:String(r.text).trim(),
+               color: /^#[0-9a-fA-F]{6}$/.test(r.color||"") ? r.color : SWATCHES[0] }));
+  return out.length? out : null;
+}
+function normalizeLoaded(lib, cons){
+  const library=(lib||[]).filter(x=>x&&x.seq).map(x=>({
+    id:x.id||nid("s"), name:(x.name||"unnamed"), seq:cleanSeq(x.seq),
+    kind:x.kind||"protein", source:x.source||"manual", meta:x.meta||{},
+    note: String(x.note||""),
+    archivedAt: x.archivedAt||null, addedAt: x.addedAt||null, color: x.color||null
+  }));
+  const ids=new Set(library.map(x=>x.id));
+  const constructs=(cons||[]).filter(Boolean).map(c=>({
+    id:c.id||nid("c"), name:c.name||"build", archivedAt: c.archivedAt||null, nameEdited: !!c.nameEdited, copies: +c.copies||0,
+    elements:(c.elements||[]).filter(e=>e&&(e.type==="block"||e.type==="linker")).map(e=>
+      e.type==="linker"
+        ? {type:"linker", seq:cleanSeq(e.seq||""), label:e.label||"linker"}
+        : {type:"block", libId:e.libId, start:+e.start||1, end:+e.end||1})
+  }));
+  return {library, constructs, ids};
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){
+      const d=JSON.parse(raw);
+      const n=normalizeLoaded(d.library, d.constructs);
+      state.library=n.library; state.constructs=n.constructs;
+      fillColors();
+      state.lastBackupAt=d.lastBackupAt||null; state.lastChangeAt=d.lastChangeAt||null;
+      state.linkers = Array.isArray(d.linkers)? d.linkers.filter(l=>l&&l.seq).map(l=>normLinker(l)) : null;
+      state.requests = Array.isArray(d.requests)? d.requests.filter(r=>r&&r.text).map(r=>normRequest(r)) : [];
+      state.colorRules = normRules(d.colorRules);
+    }else{
+      // 旧版（v1）からの引き継ぎ。v1 は復旧用に消さず残す
+      const old=localStorage.getItem(KEY_V1);
+      if(old){
+        const d=JSON.parse(old);
+        const n=normalizeLoaded(d.library, d.constructs);
+        state.library=n.library; state.constructs=n.constructs;
+        fillColors();
+        state.lastBackupAt=null; state.lastChangeAt=Date.now();
+        writeStore();
+      }
+    }
+  }catch(e){ storageOK=false; }
+  noteStorage();
+}
+function noteStorage(){
+  // 置き場所は帯の中。帯を描く前に呼ばれることがあるので、無ければ何もしない
+  const el=$("#storage-note"); if(!el) return;
+  // 保存できているときは何も言わない。使えないときだけ知らせる
+  el.textContent = storageOK
+    ? ""
+    : "⚠ このブラウザでは自動保存が使えません。作業内容は必ず「SYSTEM SAVE (.json)」を押してください。";
+}
+
+/* --- バックアップ状況の常時表示 --- */
+function fmtDate(ts){
+  const d=new Date(ts);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+/** 暦日での差。時刻の差ではなく日付の差を数える */
+function dayDiff(from,to){
+  const a=new Date(from), b=new Date(to);
+  a.setHours(0,0,0,0); b.setHours(0,0,0,0);
+  return Math.round((b-a)/86400000);
+}
+function renderBackupStrip(){
+  const el=$("#backup-strip"); if(!el) return;
+  let text;
+  if(!state.lastBackupAt){
+    text="まだバックアップしていません";
+  }else{
+    const n=dayDiff(state.lastBackupAt, Date.now());
+    const when = n<=0 ? "今日" : n===1 ? "きのう" : n+" 日前";
+    text="最終バックアップ日 "+fmtDate(state.lastBackupAt)+"（"+when+"）";
+  }
+  el.className="strip";
+  el.innerHTML='<span>'+esc(text)+'</span>'
+    +'<span class="hint" id="storage-note"></span>'
+  noteStorage();
+
+  // 前回のバックアップ以降に変更があるあいだだけ、保存ボタンを目立たせる
+  const btn=$("#btn-export");
+  if(btn){
+    const dirty = !state.lastBackupAt || (state.lastChangeAt||0) > state.lastBackupAt;
+    btn.classList.toggle("primary", dirty);
+    btn.title = dirty ? "前回のバックアップ以降に変更があります" : "変更はバックアップ済みです";
+  }
+}
+
+/* ============================================================
+   小道具
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let toastT;
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2200);
+}
+async function copyText(txt){
+  try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(txt); return true; } }catch(e){}
+  const ta=document.createElement("textarea");
+  ta.value=txt; ta.style.cssText="position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  let ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+  ta.remove(); return ok;
+}
+function download(name, text){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));
+  a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0);
+}
+/** 既に使われている名前なら (2) (3) … を付けて重複を避ける */
+function uniqueName(name, taken){
+  let n=(name||"unnamed").trim()||"unnamed";
+  if(!taken.has(n)) return n;
+  for(let i=2;i<9999;i++){ const c=n+" ("+i+")"; if(!taken.has(c)) return c; }
+  return n+" ("+Date.now()+")";
+}
+
+/* --- 確認モーダル。closeModal に渡した値が openModal の戻り値になる --- */
+let modalResolve=null;
+function openModal(html){
+  $("#modal-body").innerHTML=html;
+  $("#modal").classList.add("on");
+  const first=$("#modal-body input,#modal-body button");
+  if(first) first.focus();
+  return new Promise(res=>{ modalResolve=res; });
+}
+function closeModal(val){
+  $("#modal").classList.remove("on");
+  const r=modalResolve; modalResolve=null;
+  if(r) r(val);
+}
+function seqChip(sq){
+  return '<span class="mono">'+esc(sq.slice(0,12))+(sq.length>12?"…":"")+'</span> <span class="hint">'+sq.length+' aa</span>';
+}
+
+function wrapSeq(s,n){ if(!n||n<1) return s; return (s.match(new RegExp(".{1,"+n+"}","g"))||[]).join("\n"); }
+function safeName(s){ return String(s).replace(/[^\w.\-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60)||"construct"; }
+
+/* ============================================================
+   配列ユーティリティ
+   ============================================================ */
+function cleanSeq(s){ return String(s).toUpperCase().replace(/[^A-Z*]/g,""); }
+
+function isDNA(s){
+  if(!s) return false;
+  const n=(s.match(/[ACGTUN]/g)||[]).length;
+  return n/s.length >= 0.9 && s.length >= 30;
+}
+function revcomp(s){
+  const m={A:"T",T:"A",U:"A",G:"C",C:"G",N:"N"};
+  let o=""; for(let i=s.length-1;i>=0;i--) o+=(m[s[i]]||"N"); return o;
+}
+function translate(dna){
+  let p="";
+  for(let i=0;i+3<=dna.length;i+=3) p+=(CODON[dna.substr(i,3).replace(/U/g,"T")]||"X");
+  return p;
+}
+/* --- GenBank / ApE（.ape は GenBank の拡張）の解析 --- */
+
+/** 括弧の深さを見て、最上位のカンマだけで分割する */
+function splitTopLevel(s){
+  const out=[]; let depth=0, buf="";
+  for(const c of s){
+    if(c==="(") depth++;
+    else if(c===")") depth--;
+    if(c==="," && depth===0){ out.push(buf); buf=""; continue; }
+    buf+=c;
+  }
+  if(buf) out.push(buf);
+  return out;
+}
+
+/**
+ * GenBank の位置表記を区間の並びに直す。
+ *   145..600 / complement(145..600) / join(2500..2686,1..300)
+ *   complement(join(a,b)) / <1..600 / 600
+ * 環状なら「開始 > 終了」の 1 区間も原点またぎとして展開する。
+ * 解釈できない・範囲外なら {error} を返す（呼び出し側でその feature を飛ばす）。
+ */
+function parseLocation(str, totalLen, circular){
+  let t=String(str).replace(/\s+/g,"");
+  let complement=false;
+  const cm=t.match(/^complement\((.*)\)$/i);
+  if(cm){ complement=true; t=cm[1]; }
+  const jm=t.match(/^(?:join|order)\((.*)\)$/i);
+  if(jm) t=jm[1];
+
+  const segments=[];
+  let wrapped=false;
+  for(let part of splitTopLevel(t)){
+    const c2=part.match(/^complement\((.*)\)$/i);
+    if(c2){ complement=true; part=c2[1]; }
+    const m=part.match(/^[<>]?(\d+)(?:\.[.^][<>]?(\d+))?$/);
+    if(!m) return {error:"位置「"+str+"」を解釈できません"};
+    let a=+m[1], b=(m[2]!==undefined)? +m[2] : +m[1];
+    if(a>b){
+      if(!circular) return {error:"線状の配列で開始 > 終了（"+a+".."+b+"）になっています"};
+      // 原点をまたぐ 1 区間として 2 つに割る
+      segments.push({start:a, end:totalLen});
+      segments.push({start:1, end:b});
+      wrapped=true;
+      continue;
+    }
+    segments.push({start:a, end:b});
+  }
+  if(!segments.length) return {error:"位置が空です"};
+  for(const g of segments)
+    if(g.start<1 || g.end>totalLen)
+      return {error:"全長 "+totalLen+" bp の外を指しています（"+g.start+".."+g.end+"）"};
+
+  // join(…,末尾) → (1,…) の並びも原点またぎとみなす
+  const joined = segments.some((g,i)=> i>0 && g.start===1 && segments[i-1].end===totalLen);
+  return {segments, complement, spansOrigin: circular && (wrapped||joined)};
+}
+
+/** 位置に従って塩基配列を切り出す。complement(join(a,b)) は連結してから相補にする */
+function featureSeq(dna, loc){
+  const s=loc.segments.map(g=>dna.slice(g.start-1, g.end)).join("");
+  return loc.complement ? revcomp(s) : s;
+}
+
+/** FEATURES の行群を feature の配列にする */
+function parseGBFeatures(lines){
+  const feats=[];
+  let cur=null, qkey=null, qbuf="", inQuote=false;
+
+  const flushQual=()=>{
+    if(cur && qkey!==null){
+      let v=qbuf;
+      if(v.startsWith('"')) v=v.slice(1);
+      if(v.endsWith('"'))   v=v.slice(0,-1);
+      cur.q[qkey.toLowerCase()] = (qkey.toLowerCase()==="translation") ? v.replace(/\s+/g,"") : v.trim();
+    }
+    qkey=null; qbuf=""; inQuote=false;
+  };
+  const flushFeat=()=>{ flushQual(); if(cur) feats.push(cur); cur=null; };
+
+  for(const line of lines){
+    if(!line.trim()) continue;
+    const head=line.match(/^ {5}(\S+)\s+(.*)$/);      // 5 字下げ = 新しい feature
+    if(head){ flushFeat(); cur={type:head[1], locText:head[2].trim(), q:{}}; continue; }
+    const cont=line.match(/^ {6,}(.*)$/);             // それ以上の字下げ = 継続行
+    if(!cont || !cur) continue;
+    const t=cont[1];
+    if(!inQuote && t.startsWith("/")){
+      flushQual();
+      const m=t.match(/^\/([^=]+)(?:=([\s\S]*))?$/);
+      if(!m) continue;
+      qkey=m[1]; qbuf=(m[2]===undefined)? "" : m[2];
+      inQuote = qbuf.startsWith('"') && !(qbuf.length>1 && qbuf.endsWith('"'));
+      if(!inQuote) flushQual();                       // 1 行で閉じている
+    }else if(qkey!==null){
+      qbuf += (qkey.toLowerCase()==="translation" ? "" : " ") + t;
+      if(inQuote && t.endsWith('"')) flushQual();
+    }else{
+      cur.locText += t;                               // 位置が折り返している
+    }
+  }
+  flushFeat();
+  return feats;
+}
+
+/** GenBank / ApE を解析する。// 区切りの複数レコードに対応 */
+function parseGenBank(text){
+  const out=[];
+  for(const chunk of String(text).split(/^\/\/[ \t]*$/m)){
+    if(!/^LOCUS\s/m.test(chunk)) continue;
+    const lines=chunk.split(/\r?\n/);
+
+    const locus=lines.find(l=>/^LOCUS\s/.test(l))||"";
+    const lm=locus.match(/^LOCUS\s+(\S+)(?:\s+(\d+)\s*bp)?/i);
+    const rec={
+      name: lm? lm[1] : "unnamed",
+      circular: /\bcircular\b/i.test(locus),      // 判定せず、書いてあるとおりに
+      definition:"", dna:"", features:[]
+    };
+    const di=lines.findIndex(l=>/^DEFINITION\s/.test(l));
+    if(di>=0){
+      let d=lines[di].replace(/^DEFINITION\s+/,"");
+      for(let i=di+1;i<lines.length && /^ {12}/.test(lines[i]);i++) d+=" "+lines[i].trim();
+      rec.definition=d.replace(/\.$/,"").trim();
+    }
+
+    const fi=lines.findIndex(l=>/^FEATURES\s/.test(l));
+    const oi=lines.findIndex(l=>/^ORIGIN/.test(l));
+    if(oi>=0)
+      rec.dna=cleanSeq(lines.slice(oi+1).join("\n").replace(/[\d\s]/g,""));
+    else if(fi>=0)
+      rec.dna="";
+    rec.length=rec.dna.length || (lm && +lm[2]) || 0;
+
+    if(fi>=0) rec.features=parseGBFeatures(lines.slice(fi+1, oi>=0? oi : lines.length));
+    out.push(rec);
+  }
+  return out;
+}
+
+/**
+ * feature をタンパク質配列にする。
+ *   CDS      … /codon_start を反映して翻訳し、/translation と食い違えば知らせる
+ *   CDS 以外 … 領域の先頭から 3 文字ずつ翻訳する（読み枠の情報が無いため）
+ */
+function featureToProtein(f, rec){
+  const loc=parseLocation(f.locText, rec.length, rec.circular);
+  if(loc.error) return {error:loc.error};
+  const nt=featureSeq(rec.dna, loc);
+  if(nt.length<3) return {error:"3 塩基未満です"};
+
+  const isCDS = f.type.toUpperCase()==="CDS";
+  const cs = isCDS ? Math.min(3, Math.max(1, parseInt(f.q.codon_start,10)||1)) : 1;
+  let aa = translate(nt.slice(cs-1));
+  if(aa.endsWith("*")) aa=aa.slice(0,-1);          // 末尾の終止コドンは落とす
+
+  const flags=[];
+  if(loc.spansOrigin) flags.push({kind:"origin", text:"原点またぎ"});
+  const declared=(f.q.translation||"").toUpperCase();
+  if(isCDS && declared && declared!==aa)
+    flags.push({kind:"warn", text:"ファイルの /translation と食い違います"});
+  if(aa.includes("*"))
+    flags.push({kind:"warn", text:"途中に終止コドンがあります（読み枠が違う可能性）"});
+
+  return {aa, nt, loc, flags, isCDS, codonStart:cs};
+}
+
+/** feature の表示名。ApE は /label を使う */
+function featureName(f){
+  const q=f.q;
+  const n=(q.label||q.gene||q.product||q.note||"").trim();
+  return n? n.slice(0,70) : (f.type+" "+f.locText).slice(0,70);
+}
+
+function parseFASTA(text){
+  const recs=[]; let cur=null;
+  for(const raw of text.split(/\r?\n/)){
+    const line=raw.trim();
+    if(!line) continue;
+    if(line[0]===">"||line[0]===";"){
+      if(cur) recs.push(cur);
+      cur={header:line.slice(1).trim(), seq:""};
+    }else if(cur){ cur.seq+=line; }
+    else { cur={header:"(no header)", seq:line}; }
+  }
+  if(cur) recs.push(cur);
+  return recs.map(r=>({header:r.header, seq:cleanSeq(r.seq)})).filter(r=>r.seq);
+}
+/** PDB / UniProt 形式のヘッダから読みやすい名前を作る */
+function nameFromHeader(h){
+  const p=h.split("|").map(s=>s.trim());
+  if(p.length>=3 && /^[0-9][A-Za-z0-9]{3}_\d+$/.test(p[0])) return p[2]+" ("+p[0]+")";
+  if(p.length>=3 && (p[0]==="sp"||p[0]==="tr")) return (p[2].split(" OS=")[0])+" ("+p[1]+")";
+  return h.split(/\s{2,}|\|/)[0].slice(0,80)||"unnamed";
+}
+function stats(seq){
+  const s=seq.replace(/\*/g,"");
+  let mw=18.0153;
+  for(const c of s) mw += (AA_MW[c] ?? 110);
+  return {len:s.length, mw:mw/1000};
+}
+
+/* ============================================================
+   ライブラリ
+   ============================================================ */
+/**
+ * 配列をライブラリへ取り込む。取り込み経路（PDB・FASTA・手入力・バックアップ読込）
+ * すべてがこの 1 本を通るので、衝突の扱いは常に同じ規則になる。
+ *
+ *   同じ配列・同じ名前   → 何も尋ねず 1 つに統合
+ *   同じ配列・名前が違う → どちらの名前を残すか尋ねる
+ *   配列が違う・名前が同じ → 両方残すか読み込まないか尋ねる
+ *   配列も名前も違う     → そのまま追加
+ *
+ * @param items  [{id?, name, seq, source, meta}]
+ * @param usage  Map(元の libId → その配列を使う構築の数)。読み込み時のみ渡す
+ * @returns {added, merged, skipped, idMap} / 利用者が中止したら null
+ */
+async function integrate(items, usage){
+  const idMap=new Map();
+  const plan=[];
+  const byName=new Map(state.library.map(x=>[x.name,x]));
+  const bySeq =new Map(state.library.map(x=>[x.seq,x]));
+
+  for(const raw of items||[]){
+    const seq=cleanSeq(raw.seq);
+    if(!seq) continue;
+    const name=(raw.name||"unnamed").trim()||"unnamed";
+    const same=bySeq.get(seq);
+    if(same){                                   // 配列が完全一致 → 統合
+      if(raw.id) idMap.set(raw.id, same.id);
+      // 手元のメモは上書きしない。空のときだけ、読み込んだ側のメモを入れる
+      if(!String(same.note||"").trim() && String(raw.note||"").trim()) same.note=String(raw.note);
+      plan.push({kind:"merge", existing:same, incName:name, differs:same.name!==name});
+      continue;
+    }
+    const it={id:nid("s"), name, seq, kind:raw.kind||"protein",
+              source:raw.source||"manual", meta:raw.meta||{},
+              note:String(raw.note||""),
+              archivedAt:null, addedAt:Date.now(), color:raw.color||null};
+    if(raw.id) idMap.set(raw.id, it.id);
+    plan.push({kind:"add", item:it, srcId:raw.id||null,
+               clashWith: byName.get(name)||null,
+               usedBy: (usage&&raw.id) ? (usage.get(raw.id)||0) : 0});
+    bySeq.set(seq,it); byName.set(name,it);
+  }
+  if(!plan.length) return {added:0,merged:0,skipped:0,idMap};
+
+  const A=plan.filter(p=>p.kind==="merge"&&p.differs);   // 同じ配列・名前違い
+  const B=plan.filter(p=>p.kind==="add"&&p.clashWith);   // 配列違い・名前同じ
+  if(A.length||B.length){
+    const ans=await askConflicts(A,B);
+    if(!ans) return null;                                // やめる → 全体を取り消す
+    A.forEach((p,i)=>{ if(ans.names[i]==="inc") p.rename=p.incName; });
+    B.forEach((p,i)=>{
+      if(ans.dups[i].act==="skip") p.skip=true;
+      else p.item.name=ans.dups[i].name;
+    });
+  }
+
+  let added=0, merged=0, skipped=0;
+  for(const p of plan){
+    if(p.kind==="merge"){ if(p.rename) p.existing.name=p.rename; merged++; continue; }
+    if(p.skip){ skipped++; if(p.srcId) idMap.delete(p.srcId); continue; }
+    if(!p.item.color) p.item.color=pickColor(p.item.name);   // 直前に入れたものも数に入るよう、push の直前で決める
+    state.library.push(p.item); added++;
+  }
+  return {added, merged, skipped, idMap};
+}
+
+/** 衝突の一覧を 1 画面で確認してもらう */
+function askConflicts(A,B){
+  let h="";
+  if(A.length){
+    h+='<h4>同じ配列で名前が違います（'+A.length+' 件）</h4>'
+     + '<p class="hint">配列は同一なので 1 つに統合します。どちらの名前を残しますか。</p>'
+     + '<div class="row" style="margin-bottom:10px">'
+     + '<button class="ghost" data-all="ex">すべて手元の名前</button>'
+     + '<button class="ghost" data-all="inc">すべて読み込んだ名前</button></div>'
+     + A.map((p,i)=>'<div class="cf"><div class="cf-seq">'+seqChip(p.existing.seq)+'</div>'
+       + '<label class="cf-opt"><input type="radio" name="n'+i+'" value="ex" checked>'
+       + '<span>'+esc(p.existing.name)+'</span><em>手元</em></label>'
+       + '<label class="cf-opt"><input type="radio" name="n'+i+'" value="inc">'
+       + '<span>'+esc(p.incName)+'</span><em>読み込んだ側</em></label></div>').join("");
+  }
+  if(B.length){
+    h+='<h4'+(A.length?' style="margin-top:20px"':'')+'>名前が重複します（'+B.length+' 件）</h4>'
+     + '<p class="hint">配列は別のものです。両方残す場合は新しい名前を付けます。</p>'
+     + B.map((p,i)=>'<div class="cf"><div class="cf-seq">名前 <b>'+esc(p.clashWith.name)+'</b> ／ '
+       + '手元: '+seqChip(p.clashWith.seq)+' ・ 読み込む: '+seqChip(p.item.seq)+'</div>'
+       + '<label class="cf-opt"><input type="radio" name="d'+i+'" value="both" checked>'
+       + '<span>両方残す</span><em>新しい名前</em>'
+       + '<input type="text" data-nm="'+i+'" value="'+esc(p.item.name+" (2)")+'"></label>'
+       + '<label class="cf-opt"><input type="radio" name="d'+i+'" value="skip">'
+       + '<span>読み込まない</span><em>手元のものだけ残す</em></label>'
+       + (p.usedBy?'<div class="hint" style="color:var(--warn)">⚠ この配列は取り込む Build '
+           +p.usedBy+' 件で使われています。読み込まないと、その部分が欠けます</div>':'')
+       + '</div>').join("");
+  }
+  h+='<div class="cf-foot"><button data-act="cancel">やめる</button>'
+   + '<button class="primary" data-act="conflict-ok">この内容で取り込む</button></div>';
+  return openModal(h);
+}
+
+/* モーダル内の操作（中身は毎回作り直すので、器に 1 つだけ張る） */
+$("#modal").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.all){
+    $$('#modal-body input[type=radio]').forEach(r=>{
+      if(r.name[0]==="n" && r.value===b.dataset.all) r.checked=true;
+    });
+    return;
+  }
+  if(b.dataset.act==="gnext"){ showGuide(guidePage+1); return; }
+  if(b.dataset.act==="gprev"){ showGuide(guidePage-1); return; }
+  if(b.dataset.act==="gdot"){ showGuide(+b.dataset.i); return; }
+  if(b.dataset.act==="cancel"){ closeModal(null); return; }
+  if(b.dataset.act==="mode-ok"){
+    const r=$('#modal-body input[name="mode"]:checked');
+    closeModal(r?r.value:null); return;
+  }
+  if(b.dataset.act==="conflict-ok"){
+    const names=[], dups=[];
+    for(let i=0;;i++){ const r=$('#modal-body input[name="n'+i+'"]:checked'); if(!r) break; names.push(r.value); }
+    for(let i=0;;i++){
+      const r=$('#modal-body input[name="d'+i+'"]:checked'); if(!r) break;
+      const nm=$('#modal-body input[data-nm="'+i+'"]');
+      dups.push({act:r.value, name:(nm?nm.value.trim():"")||"unnamed"});
+    }
+    closeModal({names,dups});
+  }
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape" && $("#modal").classList.contains("on")) closeModal(null);
+});
+
+/** 1 件だけ追加する経路（PDB・ORF・手入力）。規則は読み込みと共通 */
+async function addToLibrary(item){
+  if(!cleanSeq(item.seq)){ toast("配列が空です"); return null; }
+  const r=await integrate([item]);
+  if(!r){ toast("追加をやめました"); return null; }
+  const seq=cleanSeq(item.seq);
+  save(); renderLibrary(); renderPalette(); renderConstructs(); renderOutput();
+  if(r.skipped){ toast("読み込みませんでした"); return null; }
+  const hit=state.library.find(x=>x.seq===seq);
+  if(r.merged && hit) toast("同じ配列が既にあります: "+hit.name);
+  const odd=oddChars(seq);
+  if(odd) toast("⚠ アミノ酸として扱えない文字が入っています: "+odd.text);
+  return hit||null;
+}
+function libById(id){ return state.library.find(x=>x.id===id); }
+
+/** その配列を使っている構築。アーカイブ済みの構築は数えない */
+function usedBy(libId){
+  return state.constructs.filter(c =>
+    !c.archivedAt && (c.elements||[]).some(e => e.type==="block" && e.libId===libId));
+}
+/** 一覧に出す対象。チェックが入っていればアーカイブ済みも含め、指定の順に並べる */
+/** 名称または配列に含まれるかで絞り込む。配列側は空白を除いて大文字で比べる */
+function matchSeqItem(x,q){
+  if(!q) return true;
+  const s=cleanSeq(q);
+  // cleanSeq は A-Z 以外を捨てるので、日本語だけを打つと空になる。
+  // 空のまま includes に渡すと必ず真になり、絞り込めなくなるため、配列としては照合しない
+  return x.name.toUpperCase().includes(q)
+      || String(x.note||"").toUpperCase().includes(q)
+      || (!!s && x.seq.includes(s));
+}
+function visibleLib(){
+  const q=($("#lib-find")? $("#lib-find").value : "").trim().toUpperCase();
+  const showArch = ($("#lib-arch") && $("#lib-arch").checked);
+  // 絞り込み中はアーカイブ済みも探す。探しているものが隠れていては見つけられないため
+  let rows = (showArch || q) ? state.library.slice() : state.library.filter(x=>!x.archivedAt);
+  rows = rows.filter(x=>matchSeqItem(x,q));
+  const key = $("#lib-sort") ? $("#lib-sort").value : "added";
+  const desc = $("#lib-desc") ? $("#lib-desc").checked : true;
+  const cmp = {
+    added: (a,b)=>(a.addedAt||0)-(b.addedAt||0),
+    name:  (a,b)=>a.name.localeCompare(b.name,"ja"),
+    seq:   (a,b)=>a.seq<b.seq?-1:a.seq>b.seq?1:0,
+    len:   (a,b)=>a.seq.length-b.seq.length
+  }[key] || (()=>0);
+  rows.sort((a,b)=>{ const v=cmp(a,b); return v!==0 ? v : a.name.localeCompare(b.name,"ja"); });
+  if(desc) rows.reverse();
+  // アーカイブ済みは並び順に関わらず末尾へ回す
+  return rows.filter(x=>!x.archivedAt).concat(rows.filter(x=>x.archivedAt));
+}
+/** 色を選ぶ小さなパレット */
+function swatchPicker(id, cur){
+  const known=SWATCHES.includes(cur);
+  return '<span class="sw-wrap">'+SWATCHES.map(c=>
+    '<button class="sw'+(c===cur?" on":"")+'" data-act="color" data-color="'+c+'"'
+    +' style="background:'+c+'" title="'+c+'"></button>').join("")
+    // 一覧に無い色も選べる。使っている色が一覧外なら、その色を出しておく
+    +'<input type="color" class="sw sw-any'+(known?"":" on")+'" data-act="anycolor"'
+    +' value="'+(known?"#888888":esc(cur||"#888888"))+'" title="ほかの色を選ぶ">'
+    +'</span>';
+}
+/** 「2. 繋ぎ合わせる」に並べる Build。アーカイブ済みはどうせ編集できないので出さない。
+ *  片付けと復帰は「3. 出力」で行う */
+/** アーカイブ済みも見せるか。タブ 2 と 3 で同じ設定を使うので、どちらで切り替えても揃う */
+let showArchCons=false;
+function setShowArch(v){
+  showArchCons=!!v;
+  const a=$("#con-arch"), b=$("#con-arch2");
+  if(a) a.checked=showArchCons;
+  if(b) b.checked=showArchCons;
+  renderConstructs(); renderOutput();
+}
+function visibleCons(){
+  return showArchCons
+    ? state.constructs.filter(c=>!c.archivedAt).concat(state.constructs.filter(c=>c.archivedAt))
+    : state.constructs.filter(c=>!c.archivedAt);
+}
+/** アーカイブの切り替え。データは変えず、表示から外すだけ */
+function toggleArchive(kind, id){
+  const o = kind==="lib" ? libById(id) : conById(id);
+  if(!o) return;
+  o.archivedAt = o.archivedAt ? null : Date.now();
+  save(); renderAll();
+  toast(o.archivedAt ? "アーカイブしました" : "一覧に戻しました");
+}
+
+function renderLibrary(){
+  const nArch=state.library.filter(x=>x.archivedAt).length;
+  const q=($("#lib-find")? $("#lib-find").value : "").trim();
+  const shown=visibleLib().length, total=state.library.length-nArch;
+  $("#lib-count").textContent = q? shown+" / "+total+" 件" : total+" 件";
+  if($("#lib-arch-n")) $("#lib-arch-n").textContent = nArch? "（"+nArch+"）" : "";
+  const rows=visibleLib();
+  const el=$("#lib-list");
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'
+      +(q? "「"+esc(q)+"」に当てはまる配列がありません。"
+         : state.library.length? "表示できる配列がありません。「アーカイブも表示」で確認できます。"
+                               : "まだ配列がありません。上のいずれかの方法で追加してください。")+'</div>';
+    return;
+  }
+  el.innerHTML = '<table><thead><tr><th style="width:32px"></th><th style="width:26%">名前</th><th>由来</th>'
+    + '<th style="width:22%">使用中</th><th>長さ</th><th>配列</th><th>追加日</th><th style="width:190px"></th></tr></thead><tbody>'
+    + rows.map(s=>{
+      const tagCls = s.source==="pdb"?"pdb" : s.source==="genbank"?"dna" : "";
+      const src = s.source==="pdb" ? ((s.meta||{}).pdbId||"PDB")
+                : s.source==="genbank" ? "ApE/GenBank"
+                : s.source==="orf" ? "ORF翻訳" : s.source==="fasta" ? "FASTA" : "手入力";
+      const used = usedBy(s.id);
+      const usedHtml = used.length
+        ? used.map(c=>`<span class="tag" title="${esc(c.name)}">${esc(c.name)}</span>`).join(" ")
+        : '<span class="hint">—</span>';
+      const arch = !!s.archivedAt;
+      return `<tr data-id="${s.id}" class="${arch?"arch":""}">
+        <td class="colorcell">
+          <span class="sw-cur" style="background:${libColor(s)}" title="色を選ぶ"></span>
+          ${swatchPicker(s.id, s.color)}</td>
+        <td><span class="nmbtn" data-act="nameclick"
+             title="クリックで名前と配列を開く">${esc(s.name)}</span>
+          ${(()=>{ const o=oddChars(s.seq); return o? `<span class="tag odd" title="AlphaFold に渡せない文字です: ${esc(o.text)}">⚠ ${esc(o.chars.join(""))}</span>` : ""; })()}
+          ${arch?`<span class="tag arch">アーカイブ ${esc(fmtDate(s.archivedAt))}</span>`:""}
+          ${s.note?`<span class="memo">${esc(s.note)}</span>`:""}</td>
+        <td><span class="tag ${tagCls}">${esc(src)}</span></td>
+        <td>${usedHtml}</td>
+        <td class="mono">${s.seq.length}</td>
+        <td class="mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.seq.slice(0,28))}${s.seq.length>28?"…":""}</td>
+        <td class="mono hint">${s.addedAt? esc(fmtDate(s.addedAt)) : "—"}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="ghost" data-act="arch">${arch?"戻す":"アーカイブ"}</button>
+          <button class="ghost danger" data-act="del">削除</button>
+        </td></tr>
+        <tr data-detail="${s.id}" data-id="${s.id}" style="display:${openDetails.has(s.id)?"":"none"}"><td colspan="8">
+          <div class="row" style="margin-bottom:6px">
+            <label class="f" style="flex:1">名称
+              <input type="text" value="${esc(s.name)}" data-act="edit-name" style="flex:1"></label>
+          </div>
+          <textarea data-act="edit-seq" rows="4" spellcheck="false"
+            style="width:100%;letter-spacing:.04em">${esc(wrapSeq(s.seq,60))}</textarea>
+          <label class="f" style="display:block;margin-top:8px">メモ
+            <textarea data-act="edit-note" rows="2" placeholder="この配列についての覚え書き（由来・使いどころ・注意点など）"
+              style="width:100%;margin-top:3px">${esc(s.note||"")}</textarea></label>
+          <div class="row" style="margin-top:6px">
+            <button class="ghost" data-act="copyseq">配列をコピー</button>
+            <span class="hint">${(()=>{const t=stats(s.seq);return `${t.len} aa ／ ${t.mw.toFixed(1)} kDa`;})()}</span>
+            ${used.length? `<span class="hint" style="color:var(--warn)">この配列は Build ${used.length} 件で使われています。書き換えるとその内容も変わります</span>`:""}
+          </div>
+        </td></tr>`;
+    }).join("") + "</tbody></table>";
+}
+const openDetails=new Set();     // 開いている配列パネル
+function toggleDetail(id){
+  if(openDetails.has(id)) openDetails.delete(id); else openDetails.add(id);
+  const d=$(`[data-detail="${id}"]`);
+  if(d) d.style.display = openDetails.has(id) ? "" : "none";
+}
+$("#lib-list").addEventListener("click", e=>{
+  const span=e.target.closest('[data-act="nameclick"]');
+  if(span){ toggleDetail(span.closest("tr").dataset.id); return; }
+  const b=e.target.closest("button"); if(!b) return;
+  const id=b.closest("tr").dataset.id, s=libById(id); if(!s) return;
+  const act=b.dataset.act;
+  if(act==="del"){ if(confirm(`「${s.name}」を削除します。これを使っている Build の要素も外れます。`)){ removeLibItem(id); } }
+  if(act==="arch"){ toggleArchive("lib", id); }
+  if(act==="color"){
+    s.color = b.dataset.color || s.color;
+    save(); renderAll();
+  }
+  if(act==="copyseq"){ copyText(s.seq).then(ok=>toast(ok?"コピーしました":"コピーに失敗しました")); }
+});
+/* 一覧の中の色の入力（type=color は click では拾えないので change で受ける） */
+$("#lib-list").addEventListener("change", e=>{
+  if(e.target.dataset.act!=="anycolor") return;
+  const item=libById(e.target.closest("tr").dataset.id); if(!item) return;
+  item.color=e.target.value; save(); renderAll();
+});
+/* パネルの中で名前と配列を直す */
+$("#lib-list").addEventListener("change", e=>{
+  const act=e.target.dataset.act;
+  if(act!=="edit-name" && act!=="edit-seq" && act!=="edit-note") return;
+  const item=libById(e.target.closest("tr").dataset.id); if(!item) return;
+  if(act==="edit-note"){
+    item.note=e.target.value.trim();             // 空にしてもよい。メモは任意
+  }else if(act==="edit-name"){
+    item.name=e.target.value.trim()||"unnamed";
+    state.constructs.forEach(syncBuildName);     // 自動名の Build に反映する
+  }else{
+    const v=cleanSeq(e.target.value);
+    if(!v){ toast("配列を空にはできません"); renderLibrary(); return; }
+    item.seq=v;
+  }
+  save(); renderAll();
+});
+function removeLibItem(id){
+  state.library=state.library.filter(x=>x.id!==id);
+  for(const c of state.constructs) c.elements=c.elements.filter(e=>e.type!=="block"||e.libId!==id);
+  save(); renderAll();
+}
+
+/* --- リンカーライブラリ --- */
+function visibleLinkers(){
+  const rows=linkers().slice();
+  const key=$("#lk-sort")? $("#lk-sort").value : "added";
+  const desc=$("#lk-desc")? $("#lk-desc").checked : false;
+  const cmp={
+    added:(a,b)=>(a.addedAt||0)-(b.addedAt||0),
+    name: (a,b)=>a.label.localeCompare(b.label,"ja"),
+    len:  (a,b)=>a.seq.length-b.seq.length
+  }[key] || (()=>0);
+  rows.sort((a,b)=>{ const v=cmp(a,b); return v!==0? v : a.label.localeCompare(b.label,"ja"); });
+  if(desc) rows.reverse();
+  return rows;
+}
+function renderLinkers(){
+  const all=linkers();
+  if($("#lk-count")) $("#lk-count").textContent = all.length + " 件";
+  const el=$("#lk-list"); if(!el) return;
+  if(!all.length){ el.innerHTML='<div class="empty">リンカーがありません。上の欄から追加してください。</div>'; return; }
+  el.innerHTML='<table><thead><tr><th style="width:20%">名称</th><th style="width:26%">配列</th>'
+    +'<th>メモ</th><th>追加日</th><th style="width:70px"></th></tr></thead><tbody>'
+    + visibleLinkers().map(l=>{
+      const used=state.constructs.filter(c=>!c.archivedAt
+        && (c.elements||[]).some(e=>e.type==="linker" && e.seq===l.seq)).length;
+      return `<tr data-lk="${l.id}">
+        <td><input type="text" value="${esc(l.label)}" data-act="lk-name" style="width:100%"></td>
+        <td><input type="text" class="mono" value="${esc(l.seq)}" data-act="lk-seq" style="width:100%"></td>
+        <td><input type="text" value="${esc(l.note)}" data-act="lk-note" placeholder="メモ" style="width:100%"></td>
+        <td class="mono hint">${l.addedAt? esc(fmtDate(l.addedAt)) : "—"}
+          ${l.updatedAt && (!l.addedAt || l.updatedAt>l.addedAt) ? `<br><span style="font-size:11px">更新 ${esc(fmtDate(l.updatedAt))}</span>`:""}</td>
+        <td style="text-align:right;white-space:nowrap">
+          ${used? `<span class="tag" title="この配列を使っている Build の数">${used}</span> `:""}
+          <button class="ghost danger" data-act="lk-del">削除</button>
+        </td></tr>`;
+    }).join("") + "</tbody></table>";
+}
+$("#lk-list").addEventListener("change",e=>{
+  const tr=e.target.closest("tr[data-lk]"); if(!tr) return;
+  const l=linkerById(tr.dataset.lk); if(!l) return;
+  const act=e.target.dataset.act;
+  if(act==="lk-name"){ l.label=e.target.value.trim()||l.seq||"linker"; touchLinker(l); }
+  if(act==="lk-seq"){
+    const v=cleanSeq(e.target.value);
+    if(!v){ toast("配列を空にはできません"); renderLinkers(); return; }
+    l.seq=v; touchLinker(l);
+  }
+  if(act==="lk-note"){ l.note=e.target.value; touchLinker(l); }
+  save(); renderLinkers(); renderLinkerPalette(); renderConstructs();
+});
+$("#lk-list").addEventListener("click",e=>{
+  const b=e.target.closest('button[data-act="lk-del"]'); if(!b) return;
+  const tr=b.closest("tr[data-lk]"); const l=linkerById(tr.dataset.lk); if(!l) return;
+  if(!confirm(`リンカー「${l.label}」を一覧から削除します。\n（すでに Build に入れたものは残ります）`)) return;
+  state.linkers = linkers().filter(x=>x.id!==l.id);
+  save(); renderLinkers(); renderLinkerPalette(); renderConstructs(); toast("削除しました");
+});
+$("#btn-lk-add").onclick=()=>{
+  const seq=cleanSeq($("#lk-seq").value);
+  { const o=oddChars(seq); if(o) toast("⚠ アミノ酸として扱えない文字が入っています: "+o.text); }
+  if(!seq){ toast("配列を入力してください"); return; }
+  if(linkers().some(l=>l.seq===seq)){ toast("同じ配列が既にあります"); return; }
+  const label=$("#lk-name").value.trim() || (seq.length>16? seq.slice(0,16)+"…" : seq);
+  linkers().push(normLinker({label, seq, note:$("#lk-note").value, addedAt:Date.now()}));
+  $("#lk-name").value=""; $("#lk-seq").value=""; $("#lk-note").value="";
+  save(); renderLinkers(); renderLinkerPalette(); renderConstructs(); toast("リンカーを追加しました: "+label);
+};
+$("#lk-sort").addEventListener("change",renderLinkers);
+$("#lk-desc").addEventListener("change",renderLinkers);
+
+/* ============================================================
+   PDB 検索
+   ============================================================ */
+const SEARCH_URL="https://search.rcsb.org/rcsbsearch/v2/query";
+const GQL_URL="https://data.rcsb.org/graphql";
+
+$$('input[name=smode]').forEach(r=>r.addEventListener("change",()=>{
+  const v=$('input[name=smode]:checked').value;
+  $("#sw-text").style.display = v==="text"?"":"none";
+  $("#sw-id").style.display   = v==="id"?"":"none";
+}));
+
+async function rcsbSearch(query){
+  const url=SEARCH_URL+"?json="+encodeURIComponent(JSON.stringify(query));
+  const r=await fetch(url);
+  if(r.status===204) return {result_set:[], total_count:0};
+  if(!r.ok) throw new Error("検索 API エラー ("+r.status+")");
+  return r.json();
+}
+async function fetchEntities(ids){
+  if(!ids.length) return [];
+  const out=[];
+  for(let i=0;i<ids.length;i+=50){
+    const chunk=ids.slice(i,i+50);
+    const q=`{polymer_entities(entity_ids:${JSON.stringify(chunk)}){
+      rcsb_id
+      entity_poly{pdbx_seq_one_letter_code_can rcsb_entity_polymer_type rcsb_sample_sequence_length pdbx_strand_id}
+      rcsb_polymer_entity{pdbx_description}
+      rcsb_entity_source_organism{ncbi_scientific_name}
+      rcsb_polymer_entity_container_identifiers{uniprot_ids}
+    }}`;
+    const r=await fetch(GQL_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q})});
+    if(!r.ok) throw new Error("配列取得 API エラー ("+r.status+")");
+    const d=await r.json();
+    out.push(...((d.data&&d.data.polymer_entities)||[]).filter(Boolean));
+  }
+  return out;
+}
+async function entitiesOfEntries(pdbIds){
+  const q=`{entries(entry_ids:${JSON.stringify(pdbIds)}){rcsb_id rcsb_entry_container_identifiers{polymer_entity_ids}}}`;
+  const r=await fetch(GQL_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q})});
+  if(!r.ok) throw new Error("エントリ取得 API エラー ("+r.status+")");
+  const d=await r.json();
+  const ids=[];
+  for(const e of ((d.data&&d.data.entries)||[])){
+    if(!e) continue;
+    for(const eid of (e.rcsb_entry_container_identifiers.polymer_entity_ids||[])) ids.push(e.rcsb_id+"_"+eid);
+  }
+  return ids;
+}
+function busy(msg){ $("#search-status").innerHTML = msg ? `<span class="spin"></span> ${esc(msg)}` : ""; }
+
+async function runSearch(kind){
+  $("#search-res").innerHTML="";
+  try{
+    let entityIds=[], total=0;
+    if(kind==="text"){
+      const v=$("#q-text").value.trim();
+      if(!v){ toast("検索語を入力してください"); return; }
+      busy("PDB を検索中…");
+      const rows=Math.max(1,Math.min(100,+$("#q-rows").value||25));
+      const d=await rcsbSearch({
+        query:{type:"terminal",service:"full_text",parameters:{value:v}},
+        return_type:"polymer_entity",
+        request_options:{paginate:{start:0,rows:rows},results_content_type:["experimental"]}
+      });
+      entityIds=(d.result_set||[]).map(x=>x.identifier); total=d.total_count||0;
+    }else{
+      const ids=$("#q-id").value.toUpperCase().split(/[^0-9A-Z_]+/).filter(Boolean);
+      if(!ids.length){ toast("PDB ID を入力してください"); return; }
+      busy("エントリを取得中…");
+      const direct=ids.filter(i=>/_\d+$/.test(i));
+      const plain=ids.filter(i=>!/_\d+$/.test(i));
+      entityIds=[...direct, ...(plain.length? await entitiesOfEntries(plain):[])];
+      total=entityIds.length;
+    }
+    if(!entityIds.length){ busy(""); $("#search-res").innerHTML='<div class="empty">該当なし</div>'; return; }
+    busy("配列を取得中…（"+entityIds.length+" 件）");
+    const ents=await fetchEntities(entityIds);
+    busy("");
+    $("#search-status").textContent = `${ents.length} 件を表示${total>ents.length?`（全 ${total.toLocaleString()} 件中）`:""}`;
+    renderSearchResults(ents);
+  }catch(err){
+    busy("");
+    $("#search-res").innerHTML=`<div class="empty">取得に失敗しました: ${esc(err.message)}<br>ネットワーク接続を確認してください。</div>`;
+  }
+}
+$("#btn-search").onclick=()=>runSearch("text");
+$("#btn-fetch-id").onclick=()=>runSearch("id");
+$("#q-text").addEventListener("keydown",e=>{if(e.key==="Enter")runSearch("text")});
+$("#q-id").addEventListener("keydown",e=>{if(e.key==="Enter")runSearch("id")});
+
+let lastResults=[];
+function renderSearchResults(ents){
+  lastResults=ents;
+  $("#search-res").innerHTML='<table><thead><tr><th>ID</th><th style="width:34%">名称</th><th>生物種</th><th>種別</th><th>長さ</th><th>鎖</th><th></th></tr></thead><tbody>'
+   + ents.map((e,i)=>{
+      const ep=e.entity_poly||{}, org=(e.rcsb_entity_source_organism||[])[0]||{};
+      const up=((e.rcsb_polymer_entity_container_identifiers||{}).uniprot_ids||[])[0];
+      const isProt=(ep.rcsb_entity_polymer_type||"")==="Protein";
+      return `<tr><td class="mono">${esc(e.rcsb_id)}</td>
+        <td>${esc((e.rcsb_polymer_entity||{}).pdbx_description||"—")}${up?` <span class="tag up">${esc(up)}</span>`:""}</td>
+        <td class="hint">${esc(org.ncbi_scientific_name||"—")}</td>
+        <td>${isProt?'<span class="tag pdb">Protein</span>':`<span class="tag">${esc(ep.rcsb_entity_polymer_type||"?")}</span>`}</td>
+        <td class="mono">${ep.rcsb_sample_sequence_length||"—"}</td>
+        <td class="hint">${esc(ep.pdbx_strand_id||"—")}</td>
+        <td style="text-align:right"><button class="ghost" data-i="${i}" ${isProt?"":"disabled"}>＋ 追加</button></td></tr>`;
+   }).join("")+"</tbody></table>";
+}
+$("#search-res").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-i]"); if(!b) return;
+  const ent=lastResults[+b.dataset.i]; if(!ent) return;
+  const ep=ent.entity_poly||{}, org=(ent.rcsb_entity_source_organism||[])[0]||{};
+  const it=await addToLibrary({
+    name:((ent.rcsb_polymer_entity||{}).pdbx_description||ent.rcsb_id)+" ("+ent.rcsb_id+")",
+    seq:ep.pdbx_seq_one_letter_code_can||"", source:"pdb",
+    meta:{pdbId:ent.rcsb_id, organism:org.ncbi_scientific_name||"",
+          uniprot:((ent.rcsb_polymer_entity_container_identifiers||{}).uniprot_ids||[])[0]||""}
+  });
+  if(it) toast("ライブラリに追加: "+it.name);
+});
+
+/* ============================================================
+   FASTA 読み込み
+   ============================================================ */
+const drop=$("#drop"), fileIn=$("#file");
+drop.onclick=()=>fileIn.click();
+["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("hot")}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("hot")}));
+drop.addEventListener("drop",e=>handleFiles(e.dataTransfer.files));
+fileIn.addEventListener("change",e=>{handleFiles(e.target.files); fileIn.value="";});
+
+let pending=[];   // 読み込んだファイルごとのパネル
+
+/**
+ * 読み込んだファイルを候補一覧にする。
+ *   中身で判定する（拡張子は見ない）。LOCUS 行があれば GenBank、> で始まれば FASTA。
+ *   FASTA はアミノ酸配列のみ扱う。塩基配列は読まず、理由をパネルに残す。
+ */
+async function handleFiles(files){
+  pending=[];
+  for(const f of files){
+    let text;
+    try{ text=await f.text(); }
+    catch(err){ pending.push(notice(f.name,"読み込めませんでした（"+err.message+"）")); continue; }
+
+    if(/^LOCUS\s/m.test(text)){ readGenBankFile(f.name, text); continue; }
+    readFastaFile(f.name, text);
+  }
+  renderPending();
+}
+function notice(file, note){ return {kind:"notice", file, note}; }
+
+function readGenBankFile(name, text){
+  let recs;
+  try{ recs=parseGenBank(text); }
+  catch(err){ pending.push(notice(name,"GenBank として解析できませんでした（"+err.message+"）")); return; }
+  if(!recs.length){ pending.push(notice(name,"GenBank のレコードが見つかりません。")); return; }
+
+  for(const rec of recs){
+    const title=rec.name+(rec.definition?" — "+rec.definition:"");
+    const shape=rec.circular?"環状":"線状";
+    if(!rec.dna){ pending.push(notice(name,title+"：塩基配列（ORIGIN）が入っていません。")); continue; }
+
+    const items=[], skipped=[];
+    for(const f of rec.features){
+      if(f.type.toLowerCase()==="source") continue;        // 常に全長。ドメインではない
+      const r=featureToProtein(f, rec);
+      if(r.error){ skipped.push(featureName(f)+"（"+f.locText+"）— "+r.error); continue; }
+      items.push({
+        name: featureName(f), seq: r.aa, type: f.type,
+        locText: f.locText, strand: r.loc.complement?"−":"＋",
+        ntLen: r.nt.length, flags: r.flags,
+        meta:{ file:name, locus:rec.name, featureType:f.type, location:f.locText,
+               strand:r.loc.complement?"-":"+", circular:rec.circular,
+               spansOrigin:!!r.loc.spansOrigin, codonStart:r.codonStart }
+      });
+    }
+    if(!items.length){
+      pending.push(notice(name, title+"（"+rec.length+" bp・"+shape+"）に、利用できる注釈が見つかりませんでした。"
+        +"ApE で領域に印（Feature）を付けてから読み込んでください。"
+        +(skipped.length? "／飛ばした注釈: "+skipped.join("、") : "")));
+      continue;
+    }
+    pending.push({kind:"gb", file:name,
+      title:title+"（"+rec.length+" bp・"+shape+"）", items,
+      note: skipped.length? "飛ばした注釈: "+skipped.join("、") : ""});
+  }
+}
+
+function readFastaFile(name, text){
+  let recs=[];
+  try{ recs=parseFASTA(text); }catch(err){ recs=[]; }
+  if(!recs.length){ pending.push(notice(name,"FASTA レコードが見つかりません。")); return; }
+
+  const dna=recs.filter(r=>isDNA(r.seq));
+  const prot=recs.filter(r=>!isDNA(r.seq));
+  if(dna.length)
+    pending.push(notice(name, "塩基配列の FASTA です（"+dna.length+" 件）。"
+      +"FASTA はアミノ酸配列のみ扱います。プラスミドは ApE（.ape）または GenBank（.gb / .gbk）形式で読み込んでください。"));
+  if(prot.length)
+    pending.push({kind:"fasta", file:name, title:name, note:"",
+      items: prot.map(r=>({name:nameFromHeader(r.header), seq:r.seq,
+                           meta:{header:r.header, file:name}}))});
+}
+
+/* --- 候補一覧の描画。追加と削除はここに集約する --- */
+function flagTag(fl){
+  const cls = fl.kind==="origin" ? "dna" : "";
+  return '<span class="tag '+cls+'"'+(fl.kind==="warn"?' style="color:var(--warn)"':'')+'>'+esc(fl.text)+'</span>';
+}
+function renderPending(){
+  const el=$("#orf-res");
+  if(!pending.length){ el.innerHTML=""; return; }
+  el.innerHTML=pending.map((p,pi)=>{
+    if(p.kind==="notice")
+      return '<div class="empty" style="margin-top:10px;text-align:left">'
+        +'<b>'+esc(p.file)+'</b><br>'+esc(p.note)+'</div>';
+    if(!p.items.length)
+      return '<details open style="margin-top:10px"><summary>'+esc(p.file)+' — '+esc(p.title)
+        +'</summary><div class="empty">候補をすべて消しました。もう一度読み込めば戻ります。</div></details>';
+
+    const gb = p.kind==="gb";
+    const head = gb
+      ? '<th>種別</th><th style="width:30%">名前</th><th>位置</th><th>向き</th><th>長さ</th><th></th>'
+      : '<th style="width:46%">名前</th><th>長さ</th><th>配列（先頭）</th><th></th>';
+    const rows = p.items.map((it,ii)=>{
+      const act='<td style="text-align:right;white-space:nowrap">'
+        +'<button class="ghost" data-p="'+pi+'" data-i="'+ii+'" data-act="add">＋ 追加</button>'
+        +'<button class="ghost danger" data-p="'+pi+'" data-i="'+ii+'" data-act="drop">削除</button></td>';
+      const o=oddChars(it.seq);
+      const oddTag = o? ' <span class="tag odd" title="AlphaFold に渡せない文字です: '+esc(o.text)+'">⚠ '+esc(o.chars.join(""))+'</span>' : "";
+      if(gb) return '<tr><td><span class="tag">'+esc(it.type)+'</span></td>'
+        +'<td>'+esc(it.name)+oddTag+(it.flags.length? " "+it.flags.map(flagTag).join(" "):"")+'</td>'
+        +'<td class="mono">'+esc(it.locText)+'</td>'
+        +'<td class="mono">'+it.strand+'</td>'
+        +'<td class="mono">'+it.seq.length+' aa</td>'+act+'</tr>';
+      return '<tr><td>'+esc(it.name)+oddTag+'</td>'
+        +'<td class="mono">'+it.seq.length+' aa</td>'
+        +'<td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        +esc(it.seq.slice(0,40))+(it.seq.length>40?"…":"")+'</td>'+act+'</tr>';
+    }).join("");
+
+    return '<details open style="margin-top:10px"><summary>'+esc(p.file)+' — '+esc(p.title)
+      +'：'+p.items.length+' 件</summary>'
+      +(p.note? '<div class="hint" style="margin:6px 0">'+esc(p.note)+'</div>':"")
+      +'<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table></details>';
+  }).join("");
+}
+$("#orf-res").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const p=pending[+b.dataset.p]; if(!p||!p.items) return;
+  const it=p.items[+b.dataset.i]; if(!it) return;
+
+  if(b.dataset.act==="drop"){                 // 一覧から消すだけ。ライブラリには触れない
+    p.items.splice(+b.dataset.i,1);
+    renderPending();
+    toast("候補を一覧から消しました");
+    return;
+  }
+  const added=await addToLibrary({name:it.name, seq:it.seq,
+    source: p.kind==="gb" ? "genbank" : "fasta", meta: it.meta||{}});
+  if(added) toast("ライブラリに追加: "+added.name);
+});
+
+/* 手入力 */
+$("#btn-manual").onclick=async ()=>{
+  const raw=cleanSeq($("#m-seq").value);
+  if(!raw){ toast("配列を入力してください"); return; }
+  const name=$("#m-name").value.trim()||"manual "+(state.library.length+1);
+  if(isDNA(raw)){
+    if(!confirm("塩基配列に見えます。このまま配列として登録しますか？\n"
+      +"（翻訳はしません。プラスミドから取り出すなら ApE（.ape）／GenBank 形式で読み込んでください）")) return;
+    if(!await addToLibrary({name, seq:raw, source:"manual"})) return;
+  }else{
+    const odd=oddChars(raw);
+    if(odd && !confirm("アミノ酸として扱えない文字が含まれます: "+odd.text
+      +"\n\nAlphaFold はこの配列を受け取れません。このまま追加しますか？")) return;
+    if(!await addToLibrary({name, seq:raw, source:"manual"})) return;
+  }
+  $("#m-seq").value=""; $("#m-name").value="";
+};
+
+/* ============================================================
+   構築（連結）
+   ============================================================ */
+/** 追加先の Build を返す。アーカイブ中のものは編集できないので、編集できるものへ移る */
+function ensureConstruct(){
+  if(!state.constructs.length) return newConstruct();
+  let c=state.constructs.find(x=>x.id===state.activeCon);
+  if(!c || c.archivedAt){
+    c=state.constructs.find(x=>!x.archivedAt);
+    if(!c) return newConstruct();          // すべてアーカイブ済みなら新しく作る
+    state.activeCon=c.id;
+  }
+  return c;
+}
+/** ドメイン名だけを繋いで Build の名前を作る。ファイル名に使える形に整える */
+function autoBuildName(c){
+  const copies=" copy".repeat(Math.max(0, c.copies||0));   // 複製した回数だけ末尾に付ける
+  const parts=(c.elements||[]).filter(e=>e.type==="block")
+    .map(e=>{ const s=libById(e.libId); return s? s.name : null; })
+    .filter(Boolean)
+    .map(n=>n.replace(/\s*\([^)]*\)\s*$/,"")      // 末尾の「(4O6X_1)」を落とす
+              .trim().replace(/\s+/g,"_")
+              .replace(/[^\w.\-]+/g,""))
+    .filter(Boolean);
+  return parts.length? parts.join("-")+copies : "";
+}
+/** 同じ名前が既にあれば copy2, copy3 … と番号を足す。同名が並ぶと見分けられなくなるため */
+function uniqueConName(name, selfId){
+  const taken=new Set(state.constructs.filter(c=>c.id!==selfId).map(c=>c.name));
+  if(!taken.has(name)) return name;
+  for(let n=2;;n++) if(!taken.has(name+n)) return name+n;
+}
+/** 「build 4」のような既定の名前。空いている番号を使う */
+function newConName(){
+  const taken=new Set(state.constructs.map(c=>c.name));
+  for(let n=state.constructs.length+1;;n++) if(!taken.has("build "+n)) return "build "+n;
+}
+/** 手で名前を直していなければ、要素の並びから作り直す */
+function syncBuildName(c){
+  if(!c || c.nameEdited) return;
+  const n=autoBuildName(c);
+  if(n) c.name=uniqueConName(n, c.id);
+}
+function newConstruct(){
+  const c={id:nid("c"), name:newConName(), elements:[], archivedAt:null, nameEdited:false, copies:0};
+  // 先頭に足す。押した「＋ Build」のすぐ下に出るので、下までスクロールせずに書き始められる
+  state.constructs.unshift(c); state.activeCon=c.id; save(); renderConstructs(); renderOutput();
+  return c;
+}
+function conById(id){ return state.constructs.find(c=>c.id===id); }
+function addBlock(conId, libId){
+  const c=conById(conId), s=libById(libId); if(!c||!s) return;
+  if(c.archivedAt){ toast("アーカイブ中の Build には追加できません"); return; }
+  c.elements.push({type:"block", libId, start:1, end:s.seq.length});
+  syncBuildName(c);
+  save(); renderConstructs(); renderOutput();
+}
+function addLinker(conId, seq, label){
+  const c=conById(conId); if(!c) return;
+  { const o=oddChars(cleanSeq(seq)); if(o) toast("⚠ アミノ酸として扱えない文字が入っています: "+o.text); }
+  if(c.archivedAt){ toast("アーカイブ中の Build には追加できません"); return; }
+  c.elements.push({type:"linker", seq:cleanSeq(seq), label:label||"linker"});
+  save(); renderConstructs(); renderOutput();
+}
+function elSeq(e){
+  if(e.type==="linker") return cleanSeq(e.seq);
+  const s=libById(e.libId); if(!s) return "";
+  const a=Math.max(1, Math.min(e.start||1, s.seq.length));
+  const b=Math.max(a, Math.min(e.end||s.seq.length, s.seq.length));
+  return s.seq.slice(a-1,b);
+}
+function elName(e){
+  if(e.type==="linker") return e.label||"linker";
+  const s=libById(e.libId); return s? s.name : "(削除済み)";
+}
+function conSeq(c){ return c.elements.map(elSeq).join(""); }
+/** いま最も使われていない色を選ぶ。既存の色とぶつからないようにするため */
+/** 名前に含まれる文字で色を決める規則。上から順に見て、最初に当たったものを使う */
+function colorRules(){
+  if(!Array.isArray(state.colorRules)) state.colorRules=[{id:nid("cr"), text:"Tag", color:"#4E67C8"}];
+  return state.colorRules;
+}
+/** その名前に当てはまる規則を返す。無ければ null。大文字小文字は区別しない */
+function ruleFor(name){
+  const n=String(name||"").toUpperCase();
+  return colorRules().find(r=>r.text && n.includes(r.text.toUpperCase())) || null;
+}
+function pickColor(name){
+  const r=ruleFor(name);
+  if(r) return r.color;
+  const used=new Map(SWATCHES.map(c=>[c,0]));
+  for(const x of state.library) if(used.has(x.color)) used.set(x.color, used.get(x.color)+1);
+  let best=SWATCHES[0], min=Infinity;
+  for(const c of SWATCHES){ const n=used.get(c); if(n<min){ min=n; best=c; } }
+  return best;
+}
+function renderRules(){
+  const el=$("#crules"); if(!el) return;
+  const rs=colorRules();
+  if($("#crules-n")) $("#crules-n").textContent = rs.length+" 件";
+  el.innerHTML = rs.length ? rs.map((r,i)=>`<div class="crule" data-cr="${r.id}">
+      <span class="hint mono" style="width:16px;text-align:right">${i+1}</span>
+      <input type="text" value="${esc(r.text)}" data-act="cr-text" placeholder="名前に含まれる文字（例: Tag）">
+      <input type="color" value="${esc(r.color)}" data-act="cr-color" title="この規則の色">
+      <button class="ghost" data-act="cr-up" title="上へ" ${i===0?"disabled":""}>↑</button>
+      <button class="ghost" data-act="cr-down" title="下へ" ${i===rs.length-1?"disabled":""}>↓</button>
+      <button class="ghost danger" data-act="cr-del">削除</button>
+      <span class="hint">${(()=>{const n=state.library.filter(x=>ruleFor(x.name)===r).length;
+        return n? n+" 件に当たります" : "当たるものはありません";})()}</span>
+    </div>`).join("") : '<div class="empty">規則がありません。「＋ 規則を追加」から作れます。</div>';
+}
+$("#btn-crule-add").onclick=()=>{
+  colorRules().push({id:nid("cr"), text:"", color:SWATCHES[0]});
+  save(); renderRules();
+};
+$("#btn-crule-apply").onclick=applyColorRules;
+$("#crules").addEventListener("input", e=>{
+  const act=e.target.dataset.act; if(act!=="cr-text") return;
+  const r=colorRules().find(x=>x.id===e.target.closest("[data-cr]").dataset.cr); if(!r) return;
+  r.text=e.target.value.trim(); save();
+});
+$("#crules").addEventListener("change", e=>{
+  const act=e.target.dataset.act; if(act!=="cr-color") return;
+  const r=colorRules().find(x=>x.id===e.target.closest("[data-cr]").dataset.cr); if(!r) return;
+  r.color=e.target.value; save(); renderRules();
+});
+$("#crules").addEventListener("click", e=>{
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const rs=colorRules(), id=b.closest("[data-cr]").dataset.cr, i=rs.findIndex(x=>x.id===id);
+  if(i<0) return;
+  const act=b.dataset.act;
+  if(act==="cr-del") rs.splice(i,1);
+  if(act==="cr-up" && i>0)          rs.splice(i-1,0,rs.splice(i,1)[0]);
+  if(act==="cr-down" && i<rs.length-1) rs.splice(i+1,0,rs.splice(i,1)[0]);
+  save(); renderRules();
+});
+/** 規則を、いまライブラリにあるものへ当てはめ直す。押したときだけ動く。
+ *  自動で走らせると、既存の Build の色分けが黙って変わってしまう */
+function applyColorRules(){
+  let n=0;
+  for(const x of state.library){
+    const r=ruleFor(x.name);
+    if(r && x.color!==r.color){ x.color=r.color; n++; }
+  }
+  if(n) save();
+  renderAll();
+  toast(n? n+" 件の色を規則に合わせました" : "色が変わるものはありませんでした");
+}
+/** 配列の表示色。追加時に割り当てられ、以後は変わらない */
+function libColor(s){ return s ? (s.color || SWATCHES[0]) : "var(--line-strong)"; }
+/** 読み込んだ古いデータなど、色を持たない項目に色を配る */
+function fillColors(){
+  let changed=false;
+  for(const x of state.library) if(!x.color){ x.color=pickColor(x.name); changed=true; }
+  return changed;
+}
+/**
+ * 切り出す位置が見えるプレビューを作る。
+ * 範囲の外も数残基見せて薄く、範囲の内は濃く表示する。
+ * 見せる残基数は選択範囲の長さに合わせて自動で決める。
+ */
+function rangePreview(seq, a, b){
+  const inLen=b-a+1;
+  const k = inLen<=14 ? inLen : Math.max(4, Math.min(9, Math.round(inLen/14)));
+  const flank=3;
+  const dim=t=>t? '<span class="dimres">'+esc(t)+'</span>' : "";
+  const hot=t=>t? '<b>'+esc(t)+'</b>' : "";
+  const cut='<span class="cutmark">|</span>';
+  const preL=seq.slice(Math.max(0,a-1-flank), a-1);
+  const preR=seq.slice(b, b+flank);
+  if(inLen<=2*k)                       // 全部見せられる
+    return dim(preL)+cut+hot(seq.slice(a-1,b))+cut+dim(preR);
+  return dim(preL)+cut+hot(seq.slice(a-1, a-1+k))
+       +'<span class="ell"> … '+(inLen-2*k)+' … </span>'
+       +hot(seq.slice(b-k, b))+cut+dim(preR);
+}
+/** 要素の表示色。構築の中での位置には依存しない */
+function elColor(e){
+  if(e.type==="linker") return null;
+  return libColor(libById(e.libId));
+}
+
+function renderPalette(){
+  const el=$("#palette");
+  const q=($("#palp-find")? $("#palp-find").value : "").trim().toUpperCase();
+  const live=state.library.filter(x=>!x.archivedAt);   // アーカイブ済みは足せない
+  // 名前の A–Z 順で固定する。探す順番が毎回同じになるほうが見つけやすい
+  const rows=live.filter(x=>matchSeqItem(x,q))
+    .sort((a,b)=>a.name.localeCompare(b.name,"en",{sensitivity:"base"}));
+  if($("#palp-count")) $("#palp-count").textContent = (q? rows.length+" / "+live.length : live.length)+" 件";
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'
+      +(q? "該当なし" : state.library.length?"すべてアーカイブ済みです":"ドメインがありません")+'</div>';
+    return;
+  }
+  el.innerHTML=rows.map(s=>`<div class="pal-item">
+      <span class="nm"><span class="palname" data-palseq="${s.id}" title="クリックで配列を表示／非表示"><span class="dotcol" style="background:${libColor(s)}"></span>${esc(s.name)}</span>
+        <br><span class="hint">${s.seq.length} aa</span>
+        ${s.note?`<span class="memo">${esc(s.note)}</span>`:""}
+        ${openPal.has(s.id)? `<span class="palseq mono">${esc(wrapSeq(s.seq,26)).replace(/\n/g,"<br>")}</span>`:""}</span>
+      <button class="ghost" data-add="${s.id}">＋</button></div>`).join("");
+}
+/** リンカーの絞り込み。名称・メモ・配列を見る。配列は q が配列として読めるときだけ */
+function matchLinker(l,q){
+  if(!q) return true;
+  const s=cleanSeq(q);
+  return l.label.toUpperCase().includes(q)
+      || String(l.note||"").toUpperCase().includes(q)
+      || (!!s && l.seq.includes(s));
+}
+function renderLinkerPalette(){
+  const el=$("#palette-lk"); if(!el) return;
+  const q=($("#lkp-find")?$("#lkp-find").value:"").trim().toUpperCase();
+  const all=linkers();
+  // 短い順で固定する。長さが同じものは名称順
+  const rows=(q? all.filter(l=>matchLinker(l,q)) : all.slice())
+    .sort((a,b)=>a.seq.length-b.seq.length || a.label.localeCompare(b.label,"en",{sensitivity:"base"}));
+  if($("#lkp-count")) $("#lkp-count").textContent = (q? rows.length+" / "+all.length : all.length)+" 件";
+  if(!rows.length){ el.innerHTML='<div class="empty">'+(all.length?"該当なし":"リンカーがありません")+'</div>'; return; }
+  el.innerHTML=rows.map(l=>`<div class="pal-item">
+      <span class="nm" title="${esc(l.label)}">${esc(l.label)}<br>
+        <span class="hint mono">${esc(l.seq.length>18? l.seq.slice(0,18)+"…" : l.seq)}</span>
+        <span class="hint">・${l.seq.length} aa</span>
+        ${l.note?`<span class="memo">${esc(l.note)}</span>`:""}</span>
+      <button class="ghost" data-addlk="${l.id}">＋</button></div>`).join("");
+}
+$("#palette-lk").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-addlk]"); if(!b) return;
+  const l=linkerById(b.dataset.addlk); if(!l) return;
+  const c=ensureConstruct(); addLinker(c.id, l.seq, l.label);
+  toast("追加: "+l.label);
+});
+$("#lkp-find").addEventListener("input",renderLinkerPalette);
+
+const openPal=new Set();     // パレットで配列を開いているドメイン
+$("#palette").addEventListener("click",e=>{
+  const nm=e.target.closest("[data-palseq]");
+  if(nm){
+    const id=nm.dataset.palseq;
+    if(openPal.has(id)) openPal.delete(id); else openPal.add(id);
+    renderPalette(); return;
+  }
+  const b=e.target.closest("button[data-add]"); if(!b) return;
+  const c=ensureConstruct(); addBlock(c.id, b.dataset.add); toast("追加: "+libById(b.dataset.add).name);
+});
+
+let folded={};        // 構築ごとの折りたたみ状態（保存はしない）
+function renderConstructs(){
+  const el=$("#cons");
+  const nArch=state.constructs.filter(c=>c.archivedAt).length;
+  const nLive=state.constructs.length-nArch;
+  // 作業台の見出し。何本作っているかを、数と目盛の両方で出す
+  if($("#con-live-n")) $("#con-live-n").textContent=nLive;
+  if($("#con-gauge")){
+    const cap=12;   // 多すぎるときは数字に切り替える
+    $("#con-gauge").innerHTML = nLive===0 ? '<i class="more">—</i>'
+      : nLive<=cap ? '<i></i>'.repeat(nLive)
+      : '<i></i>'.repeat(cap)+'<i class="more">+'+(nLive-cap)+'</i>';
+  }
+  if($("#con-arch-note"))
+    $("#con-arch-note").textContent = nArch? "アーカイブ "+nArch+" 本" : "";
+  const rows=visibleCons();
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'
+      +(nArch? "編集できる Build がありません。アーカイブ済みが "+nArch+" 件あります（「アーカイブも表示」で戻せます）。"
+             : "「＋ Build」から始めてください。複数の Build を並行して作れます。")+'</div>';
+    return;
+  }
+  el.innerHTML=rows.map(c=>{
+    const active = c.id===state.activeCon;
+    const total = conSeq(c).length;
+    const arch = !!c.archivedAt;
+    const fold = arch ? (folded[c.id]!==false) : !!folded[c.id];   // アーカイブ済みは既定でたたむ
+    return `<div class="con ${arch?"arch":""} ${fold?"fold":""}" data-con="${c.id}" style="${active&&!arch?"border-color:var(--accent)":""}">
+      <div class="con-hd">
+        <button class="ghost fold-btn" data-act="fold" title="${fold?"開く":"たたむ"}">${fold?"▸":"▾"}</button>
+        <input type="radio" name="active" ${active?"checked":""} data-act="activate" title="この Build を編集対象にする" aria-label="この Build を編集対象にする">
+        <input type="text" value="${esc(c.name)}" data-act="rename"
+          title="${c.nameEdited?"手で付けた名前です":"ドメイン名から自動で付いています。書き換えると以後そのままになります"}">
+        ${c.nameEdited?"":'<span class="tag" title="ドメイン名から自動で付いた名前">自動</span>'}
+        <span class="tag">${total} aa</span>
+        ${arch?`<span class="tag arch">アーカイブ ${esc(fmtDate(c.archivedAt))}</span>`:""}
+        <button class="ghost" data-act="archcon">${arch?"戻す":"アーカイブ"}</button>
+        <button class="ghost" data-act="dup">複製</button>
+        <button class="ghost danger" data-act="delcon">削除</button>
+      </div>
+      <div class="con-bd">
+        <div class="els">${c.elements.length? c.elements.map((e,i)=>elRow(c,e,i)).join("") : '<div class="empty">左のライブラリから「＋」で配列を追加してください。</div>'}</div>
+        <div class="row" style="margin-top:8px">
+          ${arch? '<span class="hint">アーカイブ中です。配列を変えるには「戻す」を押してください</span>'
+                : '<span class="hint">リンカーは右の一覧から</span>'}
+          <span style="flex:1"></span>
+          <input type="text" data-act="lfree" placeholder="自由入力（例: GSGSGS）" style="width:190px"${arch?" disabled":""}>
+          <button data-act="addfree"${arch?" disabled":""}>追加</button>
+          <button class="ghost" data-act="savelink" title="自由入力の配列をリンカーライブラリに保存"${arch?" disabled":""}>ライブラリに保存</button>
+        </div>
+      </div></div>`;
+  }).join("");
+}
+function elRow(c,e,i){
+  const s = e.type==="block" ? libById(e.libId) : null;
+  const lock = !!c.archivedAt;        // アーカイブ済みは配列に関わる操作を止める
+  const ro = lock? " disabled" : "";
+  const color = e.type==="linker" ? "var(--line-strong)" : elColor(e);
+  const len = elSeq(e).length;
+  const rng = e.type==="block" && s
+    ? `<label class="f">残基 <input type="number" data-act="start" value="${e.start||1}" min="1" max="${s.seq.length}"${ro}>
+       – <input type="number" data-act="end" value="${e.end||s.seq.length}" min="1" max="${s.seq.length}"${ro}>
+       <span class="hint">/ ${s.seq.length}</span></label>`
+    : e.type==="linker"
+      ? `<input type="text" class="mono" data-act="lseq" value="${esc(e.seq)}" style="width:170px"${ro}>`
+      : "";
+  return `<div class="el ${e.type==="linker"?"linker":""}" data-i="${i}">
+    ${lock? '<span class="handle locked" title="アーカイブ中は並べ替えできません">⠿</span>'
+          : '<span class="handle" draggable="true" title="ここを掴んで上下にドラッグ">⠿</span>'}
+    <span class="swatch" style="background:${color}"></span>
+    <span class="nm" title="${esc(elName(e))}">${esc(elName(e))}${s===null&&e.type==="block"?' <span class="tag">欠落</span>':""}</span>
+    ${rng}
+    <span class="tag">${len} aa</span>
+    <button class="ghost" data-act="up" ${i===0||lock?"disabled":""}>↑</button>
+    <button class="ghost" data-act="down" ${i===c.elements.length-1||lock?"disabled":""}>↓</button>
+    <button class="ghost danger" data-act="delel"${ro}>×</button>
+    ${e.type==="block" && s ? `<span class="seqprev" data-prev>${rangePreview(s.seq, Math.max(1,Math.min(e.start||1,s.seq.length)), Math.max(1,Math.min(e.end||s.seq.length,s.seq.length)))}</span>` : ""}
+  </div>`;
+}
+/** 編集対象を切り替える。名前を打っている最中に作り直すと文字が消えるので、印だけ付け替える */
+function setActive(id){
+  if(state.activeCon===id) return;
+  state.activeCon=id; save();
+  $$("#cons .con").forEach(n=>{
+    const t=conById(n.dataset.con), on=n.dataset.con===id;
+    n.style.borderColor = (on && t && !t.archivedAt) ? "var(--accent)" : "";
+    const r=n.querySelector('[data-act="activate"]'); if(r) r.checked=on;
+  });
+}
+$("#cons").addEventListener("click",e=>{
+  const conEl=e.target.closest("[data-con]"); if(!conEl) return;
+  const c=conById(conEl.dataset.con); if(!c) return;
+  const b=e.target.closest("button");
+  setActive(c.id);          // 丸を狙わなくてよいよう、枠の中をクリックしたら選ぶ
+  if(e.target.dataset.act==="activate") return;
+  if(!b) return;
+  const act=b.dataset.act;
+  const elDiv=b.closest(".el"); const i=elDiv? +elDiv.dataset.i : -1;
+  if(act==="delcon"){ if(confirm(`「${c.name}」を削除しますか？`)){ state.constructs=state.constructs.filter(x=>x.id!==c.id); if(state.activeCon===c.id) state.activeCon=(state.constructs[0]||{}).id||null; save(); renderConstructs(); renderOutput(); } return; }
+  if(act==="fold"){
+    const now = c.archivedAt ? (folded[c.id]!==false) : !!folded[c.id];
+    folded[c.id] = !now;        // アーカイブ済みも開閉できる
+    renderConstructs(); return;
+  }
+  if(act==="archcon"){ toggleArchive("con", c.id); return; }
+  if(act==="dup"){
+    const n=JSON.parse(JSON.stringify(c));
+    n.id=nid("c");
+    n.copies=(c.copies||0)+1;
+    n.archivedAt=null;                       // 複製は編集できる状態で作る
+    if(c.nameEdited) n.name=uniqueConName(c.name+" copy", n.id);  // 手で付けた名前は引き継いで copy を足す
+    else syncBuildName(n);                   // 自動名なら作り直す（copy の数が効く）
+    // 元のすぐ下に入れる。コピーが元の隣に並ぶので、見比べるのにスクロールが要らない
+    state.constructs.splice(state.constructs.indexOf(c)+1, 0, n);
+    state.activeCon=n.id;
+    save(); renderConstructs(); renderOutput(); return;
+  }
+  if(act==="savelink"){
+    const inp=conEl.querySelector('[data-act=lfree]'), v=cleanSeq(inp.value);
+    if(!v){ toast("保存する配列を入力してください"); return; }
+    if(linkers().some(l=>l.seq===v)){ toast("同じ配列がライブラリにあります"); return; }
+    const label=(prompt("リンカーの名称を入力してください", v.length>16? v.slice(0,16)+"…" : v)||"").trim();
+    if(!label) return;
+    linkers().push(normLinker({label, seq:v, addedAt:Date.now()}));
+    save(); renderAll();
+    toast("リンカーライブラリに保存しました: "+label); return;
+  }
+  if(act==="addfree"){ const inp=conEl.querySelector('[data-act=lfree]'); const v=cleanSeq(inp.value); if(!v){toast("配列を入力してください");return;} addLinker(c.id, v, v.length>12? v.slice(0,12)+"…" : v); inp.value=""; return; }
+  if(i<0) return;
+  if(c.archivedAt && ["delel","up","down"].includes(act)){
+    toast("アーカイブ中は配列を変えられません"); return;
+  }
+  if(act==="delel"){ c.elements.splice(i,1); syncBuildName(c); }
+  if(act==="up" && i>0){ [c.elements[i-1],c.elements[i]]=[c.elements[i],c.elements[i-1]]; syncBuildName(c); }
+  if(act==="down" && i<c.elements.length-1){ [c.elements[i+1],c.elements[i]]=[c.elements[i],c.elements[i+1]]; syncBuildName(c); }
+  save(); renderConstructs(); renderOutput();
+});
+$("#cons").addEventListener("input",e=>{
+  const act=e.target.dataset.act;
+  if(act!=="start" && act!=="end") return;
+  const elDiv=e.target.closest(".el"); if(!elDiv) return;
+  const conEl=elDiv.closest("[data-con]"); const c=conById(conEl.dataset.con); if(!c) return;
+  const el=c.elements[+elDiv.dataset.i]; if(!el || el.type!=="block") return;
+  const item=libById(el.libId); if(!item) return;
+  const a=Math.max(1, Math.min(+elDiv.querySelector('[data-act=start]').value||1, item.seq.length));
+  const b=Math.max(a, Math.min(+elDiv.querySelector('[data-act=end]').value||item.seq.length, item.seq.length));
+  const prev=elDiv.querySelector("[data-prev]");
+  if(prev) prev.innerHTML=rangePreview(item.seq, a, b);
+  const tag=elDiv.querySelector(".tag");
+  if(tag) tag.textContent=(b-a+1)+" aa";
+});
+$("#cons").addEventListener("change",e=>{
+  const conEl=e.target.closest("[data-con]"); if(!conEl) return;
+  const c=conById(conEl.dataset.con); if(!c) return;
+  const act=e.target.dataset.act;
+  if(act==="rename"){
+    c.name=e.target.value.trim()||"build";
+    c.nameEdited=true;            // これ以降は自動で書き換えない
+    save(); renderConstructs(); renderOutput(); return;
+  }
+  const elDiv=e.target.closest(".el"); if(!elDiv) return;
+  if(c.archivedAt) return;                                // アーカイブ中は受け付けない
+  const el=c.elements[+elDiv.dataset.i]; if(!el) return;
+  if(act==="start") el.start=Math.max(1, +e.target.value||1);
+  if(act==="end")   el.end=Math.max(1, +e.target.value||1);
+  if(act==="lseq"){ el.seq=cleanSeq(e.target.value); el.label=el.seq.length>12? el.seq.slice(0,12)+"…" : el.seq; }
+  save(); renderConstructs(); renderOutput();
+});
+/* ドラッグ並べ替え */
+let dragFrom=null, dragCon=null, dragTo=null;
+function clearDropMarks(){
+  $$("#cons .el").forEach(x=>x.classList.remove("ins-before","ins-after"));
+  $$("#cons .els").forEach(x=>x.classList.remove("drop-target"));
+}
+$("#cons").addEventListener("dragstart",e=>{
+  const h=e.target.closest(".handle"); if(!h) return;      // 掴めるのはハンドルだけ
+  const el=h.closest(".el"); if(!el) return;
+  const conEl=el.closest("[data-con]"); const con=conById(conEl.dataset.con);
+  if(!con || con.archivedAt) return;                      // アーカイブ中は並べ替えない
+  dragFrom=+el.dataset.i; dragCon=conEl.dataset.con; dragTo=null;
+  el.classList.add("dragging");
+  e.dataTransfer.effectAllowed="move";
+  try{ e.dataTransfer.setData("text/plain",String(dragFrom)); }catch(_){}
+});
+$("#cons").addEventListener("dragover",e=>{
+  if(dragFrom===null) return;
+  const conEl=e.target.closest("[data-con]");
+  if(!conEl || conEl.dataset.con!==dragCon) return;
+  const wrap=conEl.querySelector(".els"); if(!wrap) return;
+  e.preventDefault(); e.dataTransfer.dropEffect="move";
+  // 行の中点と比べて、どの位置に挟むかを決める（行の隙間や末尾に落としても効く）
+  const rows=[...wrap.querySelectorAll(".el")];
+  let idx=rows.length;
+  for(let k=0;k<rows.length;k++){
+    const r=rows[k].getBoundingClientRect();
+    if(e.clientY < r.top + r.height/2){ idx=k; break; }
+  }
+  dragTo=idx;
+  clearDropMarks();
+  wrap.classList.add("drop-target");
+  if(rows.length){
+    if(idx<rows.length) rows[idx].classList.add("ins-before");
+    else rows[rows.length-1].classList.add("ins-after");
+  }
+});
+$("#cons").addEventListener("drop",e=>{
+  if(dragFrom===null || dragTo===null) return;
+  const conEl=e.target.closest("[data-con]");
+  if(!conEl || conEl.dataset.con!==dragCon){ clearDropMarks(); return; }
+  e.preventDefault();
+  const c=conById(dragCon);
+  if(c && !c.archivedAt){
+    let to=dragTo;
+    if(to>dragFrom) to--;                 // 抜いたぶん後ろが詰まる
+    if(to!==dragFrom){
+      const [m]=c.elements.splice(dragFrom,1);
+      c.elements.splice(to,0,m);
+      syncBuildName(c);
+      save(); renderConstructs(); renderOutput();
+    }
+  }
+  dragFrom=dragTo=null; clearDropMarks();
+});
+$("#cons").addEventListener("dragend",()=>{
+  $$("#cons .el").forEach(x=>x.classList.remove("dragging"));
+  clearDropMarks(); dragFrom=dragTo=null;
+});
+$("#btn-new-con").onclick=()=>{ newConstruct(); toast("Build を作りました"); };
+
+/* ============================================================
+   出力
+   ============================================================ */
+function conFASTA(c){
+  const w=Math.max(0,+$("#wrap").value||0);
+  const parts=c.elements.map(e=>`${elName(e)}(${elSeq(e).length})`).join(" + ");
+  return `>${safeName(c.name)} | ${parts||"empty"}\n${wrapSeq(conSeq(c),w)}\n`;
+}
+function renderOutput(){
+  const el=$("#out");
+  const showArch = showArchCons;
+  const nArch=state.constructs.filter(c=>c.archivedAt).length;
+  if($("#con-arch-n")) $("#con-arch-n").textContent = nArch? "（"+nArch+"）" : "";
+  // アーカイブ済みは中身が空でも出す。ここでしか「戻す」を押せないため
+  const live=state.constructs.filter(c=>c.elements.length && !c.archivedAt);
+  const cons=showArch ? live.concat(state.constructs.filter(c=>c.archivedAt)) : live;
+  if(!cons.length){
+    el.innerHTML='<div class="empty">'
+      +(nArch? "配列を含む Build がありません。アーカイブ済みが "+nArch+" 件あります（「アーカイブも表示」で出せます）。"
+             : "配列を含む Build がありません。「2. 繋ぎ合わせる」で作成してください。")+'</div>';
+    return;
+  }
+  el.innerHTML=cons.map(c=>{
+    const seq=conSeq(c), t=stats(seq), odd=oddChars(seq);
+    let colored="", pos=0;
+    c.elements.forEach((e,i)=>{
+      const s=elSeq(e); if(!s) return;
+      const col = e.type==="linker" ? "var(--muted)" : elColor(e);
+      const bg  = e.type==="linker" ? "transparent" : elColor(e)+"22";
+      const body = oddChars(s)
+        ? [...s].map(ch=>AA20.has(ch)||ch==="*" ? esc(ch)
+            : `<b style="color:var(--danger);text-decoration:underline wavy">${esc(ch)}</b>`).join("")
+        : esc(s);
+      colored += `<span style="color:${col};background:${bg}" title="${esc(elName(e))} (${pos+1}-${pos+s.length})">${body}</span>`;
+      pos+=s.length;
+    });
+    const legend=c.elements.map((e,i)=>{
+      const s=elSeq(e); if(!s) return "";
+      const col=e.type==="linker"?"var(--muted)":elColor(e);
+      return e.type==="linker"
+        ? `<span><i class="lk" style="border-bottom-color:${col}"></i>${esc(elName(e))} <span class="hint">${s.length} aa</span></span>`
+        : `<span><i style="background:${col}"></i>${esc(elName(e))} <span class="hint">${s.length} aa</span></span>`;
+    }).join("");
+    const arch=!!c.archivedAt;
+    return `<div class="card ${arch?"arch":""}" data-out="${c.id}">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0;text-transform:none;letter-spacing:.01em;color:var(--text)">${esc(c.name)}
+          ${arch?`<span class="tag arch">アーカイブ ${esc(fmtDate(c.archivedAt))}</span>`:""}</h2>
+        <span>
+          ${arch ? "" : '<button class="primary" data-act="copyplain">配列をコピー</button>'
+                      + '<button data-act="dl">FASTA を保存</button>'}
+          <button class="ghost" data-act="archcon">${arch?"戻す":"アーカイブ"}</button>
+        </span>
+      </div>
+      ${odd? `<div class="warnbar"><span>⚠</span><span><b>アミノ酸として扱えない文字が入っています: ${esc(odd.text)}</b><br>
+        AlphaFold はこの配列を受け取れません。元のドメインやリンカーを直してから貼り付けてください。
+        下の配列では該当の文字に印が付いています。</span></div>` : ""}
+      <div class="stats"><span>長さ <b>${t.len}</b> aa</span>
+        <span>分子量 <b>${t.mw.toFixed(2)}</b> kDa${odd?'<span class="hint"> およその値</span>':""}</span>
+        <span>要素 <b>${c.elements.filter(e=>e.type==="block").length}</b></span></div>
+      ${c.elements.length ? `<div class="legend">${legend}</div>
+      <div class="seqbox">${colored}</div>
+      <details><summary>FASTA テキスト</summary><textarea rows="6" readonly>${esc(conFASTA(c))}</textarea></details>`
+      : '<div class="empty">この Build には配列が入っていません。</div>'}
+    </div>`;
+  }).join("");
+}
+$("#out").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const c=conById(b.closest("[data-out]").dataset.out); if(!c) return;
+  if(b.dataset.act==="copyplain") copyText(conSeq(c)).then(ok=>toast(ok?"配列をコピーしました":"コピーに失敗しました"));
+  if(b.dataset.act==="dl") download(safeName(c.name)+"_"+fmtDate(Date.now())+".fasta", conFASTA(c));
+  if(b.dataset.act==="archcon") toggleArchive("con", c.id);
+});
+$("#con-arch").addEventListener("change",e=>setShowArch(e.target.checked));
+$("#con-arch2").addEventListener("change",e=>setShowArch(e.target.checked));
+$("#wrap").addEventListener("change",renderOutput);
+$("#btn-dl-all").onclick=()=>{
+  const cons=state.constructs.filter(c=>c.elements.length && !c.archivedAt);
+  if(!cons.length){ toast("出力できる Build がありません"); return; }
+  download("constructs_"+fmtDate(Date.now())+".fasta", cons.map(conFASTA).join(""));
+};
+
+/* ============================================================
+   プロジェクト保存／読み込み
+   ============================================================ */
+$("#btn-export").onclick=()=>{
+  const now=Date.now();
+  download("protein_builder_backup_"+fmtDate(now)+".json",
+    JSON.stringify({format:"protein-domain-builder", version:2,
+                    exportedAt:new Date(now).toISOString(),
+                    library:state.library, constructs:state.constructs,
+                    linkers:linkers(), requests:state.requests,
+                    colorRules:colorRules()}, null, 2));
+  state.lastBackupAt=now;
+  writeStore();                      // 保存は「変更」ではないので save() は使わない
+  toast("バックアップを保存しました");
+};
+$("#btn-import").onclick=()=>$("#imp-file").click();
+$("#imp-file").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  e.target.value="";
+  let d;
+  try{
+    d=JSON.parse(await f.text());
+    if(!Array.isArray(d.library)||!Array.isArray(d.constructs)) throw new Error("形式が違います");
+  }catch(err){ toast("読み込みに失敗: "+err.message); return; }
+
+  let mode="merge";
+  if(state.library.length||state.constructs.length){
+    mode=await askImportMode(d);
+    if(!mode) return;
+  }
+
+  if(mode==="replace"){
+    const n=normalizeLoaded(d.library, d.constructs);
+    state.library=n.library; state.constructs=n.constructs;
+    state.colorRules = normRules(d.colorRules);
+    fillColors();
+    state.activeCon=(state.constructs[0]||{}).id||null;
+    save(); renderAll();
+    toast("置き換えました（配列 "+state.library.length+" 件・Build "+state.constructs.length+" 件）");
+    return;
+  }
+
+  // --- 取り込み ---
+  // どの配列がいくつの構築で使われているかを先に数え、読み込まない選択の影響を伝える
+  const usage=new Map();
+  for(const c of d.constructs)
+    for(const el of (c.elements||[]))
+      if(el.type==="block"&&el.libId) usage.set(el.libId,(usage.get(el.libId)||0)+1);
+
+  const r=await integrate(d.library, usage);
+  if(!r){ toast("取り込みをやめました"); return; }
+
+  // 構築を足す。id は必ず振り直し、libId は統合後の id へ貼り替える
+  const takenC=new Set(state.constructs.map(c=>c.name));
+  let cAdded=0;
+  for(const c of (d.constructs||[])){
+    const name=uniqueName(c.name||"construct", takenC);
+    takenC.add(name);
+    state.constructs.push({
+      id:nid("c"), name, archivedAt:null, nameEdited:true, copies:0,
+      elements:(c.elements||[]).map(el=>
+        el.type==="block" ? Object.assign({}, el, {libId: r.idMap.get(el.libId) || el.libId})
+                          : Object.assign({}, el))
+    });
+    cAdded++;
+  }
+  if(!state.constructs.find(c=>c.id===state.activeCon))
+    state.activeCon=(state.constructs[0]||{}).id||null;
+
+  fillColors(); save(); renderAll();
+  toast(summarize(r, cAdded));
+});
+
+/** 取り込みか置き換えかを選んでもらう。既定は取り込み */
+function askImportMode(d){
+  const h='<h4>読み込み方法を選んでください</h4>'
+   + '<p class="hint">ファイルの中身: 配列 '+(d.library||[]).length+' 件・Build '+(d.constructs||[]).length+' 件</p>'
+   + '<div class="cf">'
+   + '<label class="cf-opt"><input type="radio" name="mode" value="merge" checked>'
+   + '<span>取り込む</span><em>いまの内容は消えません。足りないものが足されます</em></label>'
+   + '<label class="cf-opt"><input type="radio" name="mode" value="replace">'
+   + '<span>置き換える</span><em>いまの内容をすべて捨てて、ファイルの中身にします</em></label>'
+   + '</div>'
+   + '<div class="cf-foot"><button data-act="cancel">やめる</button>'
+   + '<button class="primary" data-act="mode-ok">実行</button></div>';
+  return openModal(h);
+}
+
+function resetAll(){
+  if(!state.library.length && !state.constructs.length){ toast("消去するものがありません"); return; }
+  // 取り消せない操作なので、バックアップという逃げ道が無いうちは実行させない
+  const dirty = !state.lastBackupAt || (state.lastChangeAt||0) > state.lastBackupAt;
+  if(dirty){
+    alert("バックアップしていない変更があります。\n\n"
+      +"先に「SYSTEM SAVE (.json)」でファイルに保存してください。\n"
+      +"消去は取り消せません。");
+    return;
+  }
+  if(!confirm("ライブラリと Build をすべて消去します。\n最終バックアップの記録も消えます。よろしいですか？")) return;
+  state.library=[]; state.constructs=[]; state.activeCon=null; state.lastBackupAt=null;
+  // リクエストは配列データではないので残す
+  save(); renderAll(); toast("消去しました");
+}
+
+/* ============================================================
+   システムリクエスト
+   ============================================================ */
+const TAB_LABEL={t1:"配列を集める", t2:"繋ぎ合わせる", t3:"出力"};
+/** リクエストの送り先。空にすれば宛先なしで開く */
+const MAIL_TO="s2510066@jaist.ac.jp";
+/** いま開いているタブ。リクエストがどの画面で書かれたかを残すために使う */
+function currentTab(){
+  const on=$$("nav button").find(b=>b.classList.contains("on"));
+  return on? on.dataset.tab : "t1";
+}
+function normRequest(r){
+  return { id:r.id||nid("r"), text:String(r.text||"").trim(),
+           addedAt:r.addedAt||Date.now(), doneAt:r.doneAt||null,
+           tab:r.tab||null };          // 画面には出さない。コピー文にだけ載せる
+}
+function requests(){
+  if(!Array.isArray(state.requests)) state.requests=[];
+  return state.requests;
+}
+function renderRequests(){
+  const all=requests();
+  const open=all.filter(r=>!r.doneAt), done=all.filter(r=>r.doneAt);
+  if($("#rq-count")) $("#rq-count").textContent = open.length + " 件";
+  if($("#rq-done-n")) $("#rq-done-n").textContent = done.length? "（"+done.length+"）" : "";
+  const showDone = $("#rq-done") && $("#rq-done").checked;
+  // 記入した順に並べる。コピーの番号と一覧の並びを一致させるため
+  const rows = showDone ? all.slice() : open.slice();
+  const el=$("#rq-list"); if(!el) return;
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'
+      +(all.length? "未対応のリクエストはありません。「対応済みも表示」で履歴を見られます。"
+                  : "まだリクエストはありません。上の欄に書いて「追加」してください。")+'</div>';
+    return;
+  }
+  el.innerHTML='<table><thead><tr><th style="width:96px">追加日</th><th>内容</th>'
+    +'<th style="width:150px"></th></tr></thead><tbody>'
+    + rows.map(r=>`<tr data-rq="${r.id}" class="${r.doneAt?"arch":""}">
+        <td class="mono hint">${esc(fmtDate(r.addedAt))}
+          ${r.doneAt?`<br><span style="font-size:11px">済 ${esc(fmtDate(r.doneAt))}</span>`:""}</td>
+        <td><textarea rows="${Math.min(6,Math.max(1,r.text.split("\n").length))}" data-act="rq-edit"
+             style="width:100%;font-family:inherit;font-size:13px">${esc(r.text)}</textarea></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="ghost" data-act="rq-done">${r.doneAt?"未対応に戻す":"対応済みにする"}</button>
+          <button class="ghost danger" data-act="rq-del">削除</button>
+        </td></tr>`).join("") + "</tbody></table>";
+}
+$("#btn-rq-add").onclick=()=>{
+  const t=$("#rq-text").value.trim();
+  if(!t){ toast("内容を入力してください"); return; }
+  requests().push(normRequest({text:t, tab:currentTab()}));
+  $("#rq-text").value="";
+  save(); renderRequests(); toast("リクエストを追加しました");
+};
+$("#rq-list").addEventListener("change",e=>{
+  if(e.target.dataset.act!=="rq-edit") return;
+  const tr=e.target.closest("tr[data-rq]");
+  const r=requests().find(x=>x.id===tr.dataset.rq); if(!r) return;
+  const t=e.target.value.trim();
+  if(!t){ toast("内容を空にはできません"); renderRequests(); return; }
+  r.text=t; save(); renderRequests();
+});
+$("#rq-list").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const tr=b.closest("tr[data-rq]");
+  const r=requests().find(x=>x.id===tr.dataset.rq); if(!r) return;
+  if(b.dataset.act==="rq-done"){ r.doneAt = r.doneAt? null : Date.now(); save(); renderRequests(); return; }
+  if(b.dataset.act==="rq-del"){
+    if(!confirm("このリクエストを削除します。よろしいですか？")) return;
+    state.requests = requests().filter(x=>x.id!==r.id);
+    save(); renderRequests(); toast("削除しました");
+  }
+});
+$("#rq-done").addEventListener("change",renderRequests);
+/** 未対応のリクエストを、そのまま Claude に渡せる形の文面にする。
+ *  コピー・保存・メールで同じものを使う。文面が 3 か所に分かれると必ず食い違うため */
+function requestDoc(){
+  const open=requests().filter(r=>!r.doneAt);   // 記入順のまま
+  if(!open.length) return null;
+  const title="Protein Builder へのリクエスト（"+fmtDate(Date.now())+" 時点・"+open.length+" 件）";
+  const body="# "+title+"\n\n"
+    + open.map((r,i)=>(i+1)+". "+r.text.replace(/\n/g,"\n   ")
+        +"  〔"+fmtDate(r.addedAt)+(r.tab&&TAB_LABEL[r.tab]? "・"+TAB_LABEL[r.tab] : "")+"〕").join("\n");
+  return {title, body, n:open.length};
+}
+$("#btn-rq-copy").onclick=()=>{
+  const d=requestDoc();
+  if(!d){ toast("未対応のリクエストはありません"); return; }
+  copyText(d.body).then(ok=>toast(ok? d.n+" 件をコピーしました" : "コピーに失敗しました"));
+};
+$("#btn-rq-dl").onclick=()=>{
+  const d=requestDoc();
+  if(!d){ toast("未対応のリクエストはありません"); return; }
+  download("protein_builder_requests_"+fmtDate(Date.now())+".md", d.body);
+  toast(d.n+" 件を保存しました");
+};
+$("#btn-rq-mail").onclick=()=>{
+  const d=requestDoc();
+  if(!d){ toast("未対応のリクエストはありません"); return; }
+  // 宛先は空にする。誰に送るかは書いた人が決める
+  const url="mailto:"+MAIL_TO+"?subject="+encodeURIComponent(d.title)+"&body="+encodeURIComponent(d.body);
+  // mailto は長さに上限があり、超えると本文が黙って切れる。切れるくらいならファイルを勧める
+  if(url.length>1800){
+    alert("リクエストが長いため、メールでは途中で切れてしまいます。\n\n"
+      +"「.md で保存」でファイルにして、それを添付してください。");
+    return;
+  }
+  location.href=url;
+};
+
+/* ============================================================
+   タブ・初期化
+   ============================================================ */
+let curTab="t1";
+function go(id){
+  curTab=id;
+  $$("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===id));
+  $$(".tab").forEach(s=>s.classList.toggle("on", s.id===id));
+  if(id==="t2"){ renderPalette(); renderLinkerPalette(); renderConstructs(); }
+  if(id==="t3") renderOutput();
+}
+/* --- ヘルプ。開いているタブの項目を先頭に出す --- */
+const HELP={
+  t1:{ title:"1. 配列を集める",
+    what:"使いたい配列を集めて、ライブラリに貯める画面です。",
+    step:"PDB ID を入れて取得、または .ape / .gb / FASTA をドロップ → 一覧の「＋ 追加」。",
+    traps:[
+      "<b>候補一覧に出ただけでは入っていません。</b>「＋ 追加」を押してはじめてライブラリに入ります",
+      "ApE・GenBank は<b>印を付けた領域だけ</b>が候補になります。FASTA は<b>アミノ酸配列だけ</b>です" ]},
+  t2:{ title:"2. 繋ぎ合わせる",
+    what:"ライブラリの配列を並べて、1 本につなぐ画面です。",
+    step:"「＋ Build」で入れ物を作る → 左のドメイン、右のリンカーの「＋」で足していく。",
+    traps:[
+      "「＋」が入るのは<b>選んでいる Build</b> です。<b>枠の中をクリックすれば選べます</b>",
+      "並べ替えは <b>⠿ を掴んで</b>ドラッグ。入力欄はふつうに編集できます" ]},
+  t3:{ title:"3. 出力",
+    what:"できた配列を取り出して、AlphaFold に渡す画面です。",
+    step:"「配列をコピー」→ AlphaFold Server や ColabFold の入力欄に貼り付け。",
+    traps:[
+      "<b>⚠ が出ている Build は通りません。</b>波線が付いた文字を直してください",
+      "使い終えた Build は<b>「アーカイブ」</b>で片付きます。上の「アーカイブも表示」で戻せます" ]},
+  save:{ title:"保存とバックアップ",
+    what:"このブラウザの中に自動保存されますが、閲覧データを消すと消えます。",
+    step:"節目で右上の「SYSTEM SAVE (.json)」を押してファイルに保存してください。",
+    traps:[
+      "<b>別の PC・別のブラウザには引き継がれません。</b>持ち運ぶには .json を運びます",
+      "「⚠ 自動保存が使えません」と出ているときは、<b>閉じた時点で全部消えます</b>" ]},
+  req:{ title:"システムリクエスト",
+    what:"直してほしいことを書き溜めておく欄です（画面の一番下）。",
+    step:"書いて「追加」。溜まったら「未対応をコピー」で全文を写して Claude に渡します。",
+    traps:[
+      "<b>「.md で保存」</b>でファイルにできます。添付して渡すときはこちら",
+      "<b>「メールで送る」</b>は宛先が空です。<b>送信するのはあなたです</b>" ]}
+};
+/* --- ヘルプは 3 枚のガイド。1 枚ずつ送って読む --- */
+const GUIDE=["t1","t2","t3"];
+let guidePage=0;
+function helpHTML(){
+  const key=GUIDE[guidePage], h=HELP[key];
+  const extra = key==="t3" ? [HELP.save, HELP.req] : [];
+  const dots=GUIDE.map((_,i)=>
+    `<button class="gdot${i===guidePage?" on":""}" data-act="gdot" data-i="${i}"
+       title="${esc(HELP[GUIDE[i]].title)}" aria-label="${esc(HELP[GUIDE[i]].title)}"></button>`).join("");
+  const block=x=>`<p class="g-what">${x.what}</p>
+      <div class="step"><b>まずこれ:</b> ${x.step}</div>
+      <ul>${x.traps.map(t=>"<li>"+t+"</li>").join("")}</ul>`;
+  return `<div class="guide">
+    <div class="g-head">
+      <span class="g-step">ガイド ${guidePage+1} / ${GUIDE.length}</span>
+      <h4 class="g-title">${esc(h.title)}</h4>
+    </div>
+    <div class="g-body help">
+      ${block(h)}
+      ${extra.map(x=>`<h4>${esc(x.title)}</h4>${block(x)}`).join("")}
+      ${guidePage===GUIDE.length-1
+        ? '<p class="hint" style="margin:14px 0 0">さらに詳しい説明は、この HTML と同じフォルダにある <b>使い方.md</b> にあります。</p>'
+        : ""}
+    </div>
+    <div class="g-foot">
+      <button class="ghost" data-act="cancel">閉じる</button>
+      <span class="g-dots">${dots}</span>
+      <span class="g-nav">
+        <button class="ghost" data-act="gprev" ${guidePage===0?"disabled":""} title="前へ" aria-label="前のガイド">←</button>
+        ${guidePage===GUIDE.length-1
+          ? '<button class="primary" data-act="cancel">読み終えた</button>'
+          : '<button class="primary" data-act="gnext" title="次へ" aria-label="次のガイド">次へ →</button>'}
+      </span>
+    </div>
+  </div>`;
+}
+function showGuide(n){
+  guidePage=Math.max(0, Math.min(GUIDE.length-1, n));
+  $("#modal-body").innerHTML=helpHTML();
+}
+$("#btn-help").onclick=()=>{ guidePage=0; openModal(helpHTML()); };
+
+/* --- ⋯ メニュー。取り消せない操作は普段は隠しておく --- */
+const moreMenu=$("#more-menu"), moreBtn=$("#btn-more");
+function closeMore(){ moreMenu.hidden=true; moreBtn.setAttribute("aria-expanded","false"); }
+moreBtn.onclick=e=>{
+  e.stopPropagation();
+  const open=moreMenu.hidden;
+  moreMenu.hidden=!open; moreBtn.setAttribute("aria-expanded", String(open));
+};
+document.addEventListener("click", e=>{ if(!moreMenu.hidden && !moreMenu.contains(e.target)) closeMore(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeMore(); });
+$("#btn-reset").onclick=()=>{ closeMore(); resetAll(); };
+
+$("#lib-arch").addEventListener("change",renderLibrary);
+$("#lib-find").addEventListener("input",renderLibrary);
+$("#palp-find").addEventListener("input",renderPalette);
+$("#lib-sort").addEventListener("change",renderLibrary);
+$("#lib-desc").addEventListener("change",renderLibrary);
+$("#btn-fold-all").onclick=()=>{ state.constructs.forEach(c=>folded[c.id]=true); renderConstructs(); };
+$("#btn-unfold-all").onclick=()=>{ folded={}; state.constructs.forEach(c=>{ if(c.archivedAt) folded[c.id]=false; }); renderConstructs(); };
+$$("nav button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+/** ヘッダーは文言・折返し・表示状態で高さが変わるので、実測して固定位置に反映する。
+ *  非表示のまま読み込まれると高さが 0 や異常値になるため、変化を監視して追従する */
+function syncHeaderHeight(){
+  const h=document.querySelector("header"); if(!h) return;
+  const v=Math.round(h.getBoundingClientRect().height);
+  if(v>0 && v<400) document.documentElement.style.setProperty("--hdr", v+"px");
+}
+if(window.ResizeObserver) new ResizeObserver(syncHeaderHeight).observe(document.querySelector("header"));
+addEventListener("resize", syncHeaderHeight);
+function renderAll(){ renderRules(); renderLibrary(); renderLinkers(); renderPalette(); renderLinkerPalette(); renderConstructs(); renderOutput(); renderRequests(); syncHeaderHeight(); }
+load(); renderAll(); renderBackupStrip(); syncHeaderHeight();
+</script>
+</body>
+</html>
