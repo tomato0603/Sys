@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primer Builder</title>
+<style>
+/* PowerPoint テーマ「スリップストリーム」の配色。Protein Builder が使っている
+   のと同じ値（あちらの SWATCHES）で、二つの道具で色がそろう。
+   テーマの原色はスライドの塗り用で、白地の小さな文字にすると読めないため、
+   色相はそのままに明度を落としてある。配列の下に敷くぶんは薄く重ねる。 */
+:root { color-scheme: light dark;
+  --line: rgba(128,128,128,0.35); --panel: rgba(128,128,128,0.10);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --accent:#4E67C8; --ok:#28856C; --bad:#E42D0F; --warn:#C55400;
+  --sel: rgba(78,103,200,0.42); --caret:#E42D0F;
+  --prom: rgba(81,132,16,0.32); --term: rgba(197,84,0,0.32);
+  /* 取り込んだ配列 1 本ずつの色。選択（青）・promoter（黄緑）・terminator
+     （橙）とぶつかりにくい順に並べてある */
+  --pb0: rgba(13,128,169,0.34);   /* 水色 accent2 */
+  --pb1: rgba(40,133,108,0.36);   /* 青緑 accent4 */
+  --pb2: rgba(228,45,15,0.26);    /* 赤   accent6 */
+  --pb3: rgba(33,39,69,0.24);     /* 濃紺 dk2 */
+  --pb4: rgba(197,84,0,0.30);     /* 橙   accent5 */
+  --pb5: rgba(81,132,16,0.30);    /* 黄緑 accent3 */
+  --pb6: rgba(78,103,200,0.30); } /* 青   accent1 */
+
+/* 暗い地では逆になる。明度を落とした値は沈んで読めないので、テーマの原色
+   （スライドの塗り用の明るいほう）をそのまま薄く敷く。
+   accent1 の青だけは暗い地でも沈むため、色相はそのままに明度を上げてある。
+   濃紺 dk2 は暗い地では見えないので、同じ役目を lt2 の淡い灰青に渡す。 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent:#7E92DC; --ok:#5DCEAF; --bad:#F14124; --warn:#FF8021;
+    --sel: rgba(126,146,220,0.38); --caret:#F14124;
+    --prom: rgba(167,234,82,0.24);  /* accent3 原色 */
+    --term: rgba(255,128,33,0.26);  /* accent5 原色 */
+    --pb0: rgba(94,204,243,0.26);   /* 水色 accent2 原色 */
+    --pb1: rgba(93,206,175,0.26);   /* 青緑 accent4 原色 */
+    --pb2: rgba(241,65,36,0.30);    /* 赤   accent6 原色 */
+    --pb3: rgba(217,221,232,0.20);  /* 淡灰青 lt2 */
+    --pb4: rgba(255,128,33,0.26);   /* 橙   accent5 原色 */
+    --pb5: rgba(167,234,82,0.22);   /* 黄緑 accent3 原色 */
+    --pb6: rgba(126,146,220,0.30); }/* 青   accent1 を明るくしたもの */
+}
+* { box-sizing: border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Helvetica Neue",sans-serif;
+  line-height:1.65; margin:0; padding:2rem 1.25rem 4rem; max-width:70rem; margin-inline:auto; }
+h1 { font-size:1.35rem; margin:0 0 0.15rem; }
+h2 { font-size:1.05rem; margin:0 0 0.6rem; }
+h3 { font-size:0.95rem; margin:1.3rem 0 0.4rem; }
+p.lede { margin:0 0 1.5rem; opacity:0.72; font-size:0.85rem; }
+.step { border:1px solid var(--line); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
+.step.done { background:var(--panel); }
+/* The numbered boxes are the run of work. What comes after it -- the saved
+   designs, the request form, the self-test -- is not a step, so it does not
+   look like one. */
+.step.aside { border:0; border-top:1px solid var(--line); border-radius:0;
+  padding:1.2rem 0 0; margin-bottom:1.8rem; }
+.step.aside > h2 { font-size:0.95rem; opacity:0.75; }
+label { display:block; margin:0.9rem 0 0.25rem; font-size:0.82rem; font-weight:600; }
+label small { font-weight:400; opacity:0.7; }
+input[type=text],input[type=number],textarea,select {
+  width:100%; padding:0.5rem 0.55rem; font-size:0.88rem; font-family:inherit;
+  border:1px solid var(--line); border-radius:6px; background:transparent; color:inherit; }
+textarea { font-family:var(--mono); font-size:0.78rem; min-height:4.5rem; }
+.row { display:flex; gap:0.9rem; flex-wrap:wrap; }
+.row > div { flex:1 1 10rem; }
+button,.btn { font:inherit; font-size:0.88rem; padding:0.5rem 1.1rem; border-radius:6px;
+  border:1px solid var(--line); background:var(--panel); color:inherit; cursor:pointer; }
+button.primary { font-weight:600; border-color:var(--accent); color:var(--accent); }
+button.tiny { padding:0.15rem 0.5rem; font-size:0.72rem; }
+button[disabled] { opacity:0.45; cursor:default; }
+/* the blank PCR-condition boxes: a place to write, not a form to submit */
+input.fill { width:11rem; }
+/* the feature table's position boxes: wide enough for a 6-digit plasmid */
+input.pos { width:6.5rem; }
+.actions { margin-top:1rem; display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; }
+table { border-collapse:collapse; width:100%; font-size:0.84rem; margin:0.4rem 0 0.8rem; }
+th,td { text-align:left; padding:0.35rem 0.5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-weight:600; opacity:0.8; font-size:0.78rem; }
+td.seq,code,.mono { font-family:var(--mono); font-size:0.78rem; word-break:break-all; }
+.scroll { overflow-x:auto; }
+.banner { border-left:4px solid var(--line); padding:0.6rem 0.9rem; border-radius:4px;
+  background:var(--panel); margin:0.8rem 0; }
+.banner.ok { border-color:var(--ok); } .banner.bad { border-color:var(--bad); }
+.banner.warn { border-color:var(--warn); }
+/* Only the title is a block. A <strong> anywhere else in a banner used to
+   break the line, which is how a one-line notice became six (2026-09-27). */
+.banner > strong:first-child { display:block; }
+.modes label { display:inline-block; margin-right:1.4rem; }
+.card { border:1px solid var(--line); border-radius:10px;
+        padding:0.9rem 1.1rem; margin:0.9rem 0; }
+.protein { font-family:var(--mono); font-size:0.78rem; line-height:1.9;
+           overflow-x:auto; white-space:pre; }
+.protein .pos { opacity:0.55; }
+details { margin-top:1rem; } summary { cursor:pointer; font-size:0.85rem; font-weight:600; }
+.drop { border:2px dashed var(--line); border-radius:10px; padding:1.2rem; text-align:center; font-size:0.85rem; }
+.drop.over { border-style:solid; background:var(--panel); }
+.hint { font-size:0.78rem; opacity:0.7; margin:0.3rem 0 0; }
+/* the sequence view: one span per base so a click names an exact position */
+.seqview { font-family:var(--mono); font-size:0.8rem; line-height:1.75;
+  overflow-x:auto; white-space:nowrap; padding:0.6rem 0.4rem;
+  border:1px solid var(--line); border-radius:8px; user-select:none;
+  cursor:crosshair; max-height:26rem; overflow-y:auto; }
+.srow { white-space:pre; }
+.seqview .pos { opacity:0.5; }
+.seqview .b,.seqview .r { padding:0 0.02em; }
+.seqview .b.prom { background:var(--prom); }
+.seqview .b.term { background:var(--term); }
+/* a sequence picked from the Protein Builder list; .pb marks it, .pbN gives
+   it its own colour. Declared before .sel on purpose: the range being edited
+   must stay visible through it */
+.seqview .b.pb0,.seqview .r.pb0,.chip.pb0 { background:var(--pb0); }
+.seqview .b.pb1,.seqview .r.pb1,.chip.pb1 { background:var(--pb1); }
+.seqview .b.pb2,.seqview .r.pb2,.chip.pb2 { background:var(--pb2); }
+.seqview .b.pb3,.seqview .r.pb3,.chip.pb3 { background:var(--pb3); }
+.seqview .b.pb4,.seqview .r.pb4,.chip.pb4 { background:var(--pb4); }
+.seqview .b.pb5,.seqview .r.pb5,.chip.pb5 { background:var(--pb5); }
+.seqview .b.pb6,.seqview .r.pb6,.chip.pb6 { background:var(--pb6); }
+/* the colour of a row, shown next to its button so the list and the sequence
+   can be matched without hovering */
+.chip { display:inline-block; width:0.85rem; height:0.85rem; border-radius:3px;
+  border:1px solid var(--line); vertical-align:-0.12em; margin-right:0.4rem; }
+.seqview .b.sel,.seqview .r.sel { background:var(--sel); }
+/* The insertion point. An inset shadow, so the monospace grid does not
+   shift the way a border would. */
+.seqview .b.caret { box-shadow:inset 2px 0 0 var(--caret); }
+/* the name of the imported sequence under the cursor */
+#pbTip { position:fixed; z-index:50; display:none; pointer-events:none;
+  background:Canvas; color:CanvasText; border:1px solid var(--line);
+  border-radius:4px; padding:0.1rem 0.45rem; font-size:0.75rem;
+  white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,0.25); }
+.promkey { background:var(--prom); padding:0 0.3em; border-radius:3px; }
+.termkey { background:var(--term); padding:0 0.3em; border-radius:3px; }
+footer { margin-top:2.5rem; font-size:0.78rem; opacity:0.7; border-top:1px solid var(--line); padding-top:1rem; }
+</style>
+</head>
+<body>
+
+<h1>Primer Builder</h1>
+
+<div id="messages"></div>
+<div id="pbTip"></div>
+
+<div class="step" id="load">
+  <h2>1. ファイルをアップロード、または配列をコピペ</h2>
+  <p class="hint">受け付けるのは <strong>DNA 配列</strong>だけです。</p>
+  <div class="drop" id="drop">
+    <strong>ファイルをここにドラッグ＆ドロップ</strong><br>
+    <span class="hint">ApE の <strong>.ape</strong> ファイル、または
+    塩基配列を書いたテキストファイル</span><br><br>
+    <input type="file" id="picker" accept=".ape,.gb,.gbk,.txt,.seq,text/plain">
+    <div class="hint">選択中: <span id="filename">なし</span></div>
+  </div>
+  <div id="pasteArea">
+    <label for="pasted">配列をペースト
+      <small>.ape の中身（GenBank 形式）、または塩基配列そのまま</small></label>
+    <textarea id="pasted"></textarea>
+  </div>
+  <div class="actions">
+    <button type="button" id="loadPasted">コピペした配列を読み込む</button>
+    <button type="button" id="showPaste" class="tiny">配列をペーストして読み込む</button>
+    <button type="button" id="exampleButton" class="tiny">同梱の例で試す</button>
+  </div>
+  <div id="summary"></div>
+</div>
+
+<div class="step modes" id="modeSwitch">
+  <h2>2. 指定のしかたを選ぶ</h2>
+  <label><input type="radio" name="mode" value="edit" checked>
+    配列を見て範囲を選ぶ <small>座標を打ち込まずに、画面上で範囲を指定します</small></label>
+  <label><input type="radio" name="mode" value="mutation">
+    変異表記で指定する <small>K42A など。CDS と残基番号を使います</small></label>
+</div>
+
+<div class="step" id="viewSection">
+  <h2>3. 配列を見て、改変する範囲を選ぶ</h2>
+  <p class="hint"><strong>なぞる</strong>と範囲、<strong>クリック</strong>すると
+    挿入位置。塩基配列から選べば塩基で、タンパク質配列から選べばアミノ酸で
+    指定したことになります。</p>
+  <div id="views"></div>
+  <div id="selectionInfo"></div>
+  <details id="findSection">
+    <summary>配列を貼って位置を探す</summary>
+    <textarea id="findText" placeholder="ApE でコピーした塩基配列"></textarea>
+    <div class="actions">
+      <button type="button" class="tiny" id="findButton">探す</button>
+      <span class="hint">見つかった範囲がそのまま選択になります。</span>
+    </div>
+  </details>
+  <details id="pbuildSection" open>
+    <summary>Protein Builder のタンパク質配列<span id="pbuildCount"></span></summary>
+    <div id="pbuildList"></div>
+    <label for="pbuildFile">読み込む
+      <small>あちらの「SYSTEM SAVE (.json)」で保存したファイル。
+      一度読めば次からは要りません</small></label>
+    <input type="file" id="pbuildFile" accept=".json,application/json">
+  </details>
+  <!-- Filled by renderViews. Kept out of #views so the fold above stays
+       above the full-sequence toggle. -->
+  <div id="fullView"></div>
+  <!-- Both of these decide how the sequence is read, and neither changes
+       often, so they share one fold (asked for 2026-09-27). -->
+  <details id="readSettings">
+    <summary>読み取りの設定（開始コドン・認識する配列）</summary>
+    <div id="orfChooser"></div>
+    <div class="row">
+      <div><label for="t7promoter">T7 promoter</label>
+        <input type="text" id="t7promoter"></div>
+      <div><label for="t7terminator">T7 terminator</label>
+        <input type="text" id="t7terminator"></div>
+    </div>
+    <div class="actions"><button type="button" class="tiny" id="rescan">再検出</button></div>
+  </details>
+</div>
+
+<!-- Filled only when assemble.js is part of the build (Construct Builder).
+     In Primer Builder it stays empty and ui.js never shows it. -->
+<div class="step" id="assembleStep"></div>
+
+<div class="step" id="editSection">
+  <h2>4. 変異導入</h2>
+  <div id="editNotice"></div>
+  <div class="modes" id="seqKind">
+    <label><input type="radio" name="seqkind" value="dna" checked>
+      塩基配列で入力</label>
+    <label><input type="radio" name="seqkind" value="protein">
+      アミノ酸配列で入力</label>
+  </div>
+  <label for="newSequence" id="newSeqLabel">新しい配列</label>
+  <input type="text" id="newSequence">
+  <p class="hint" id="newSeqHint">先に範囲を選んでください。</p>
+</div>
+
+<div class="step" id="mnCds">
+  <h2>3. 改変対象の遺伝子（CDS）</h2>
+  <p class="hint">ファイルに CDS 注釈があれば選べます。ApE のファイルは注釈が
+    付いていないことが多いので、その場合は範囲を入力してください。</p>
+  <div id="cdsChooser"></div>
+  <div id="proteinView"></div>
+</div>
+
+<div class="step" id="mnEdit">
+  <h2>4. どう改変するか</h2>
+  <label for="mutations">変異表記
+    <small>カンマまたは空白で区切って複数指定できます</small></label>
+  <input type="text" id="mutations"
+         placeholder="例: K42A, ins@50:GGSGGS, del45-47, rep45-50:GS">
+  <p class="hint">
+    <code>K42A</code> 残基 42 を K から A へ置換 ／
+    <code>ins@50:GGSGGS</code> 残基 50 の<strong>後ろ</strong>に挿入 ／
+    <code>del45-50</code> 残基 45〜50 を欠失 ／
+    <code>rep45-50:GS</code> 置換（長さが変わってよい）</p>
+  <label for="target">または目的タンパク質の配列
+    <small>元の配列と比べて差分を自動で取り出します。
+    変異表記とどちらか一方だけ入力してください</small></label>
+  <textarea id="target"></textarea>
+</div>
+
+<div class="step" id="designStep">
+  <h2>5. 設計する</h2>
+  <p class="hint" id="designHint"></p>
+  <details>
+    <summary>詳細な条件</summary>
+    <div class="row">
+      <div><label for="maxPrimerLen">プライマー長の上限 <small>規定値 60 nt</small></label>
+        <input type="number" id="maxPrimerLen" value="60" min="20" max="200" step="1"
+               data-label="プライマー長の上限" data-default="60"></div>
+      <div><label for="minAnnealLen">アニール域の最小 <small>規定値 18 nt</small></label>
+        <input type="number" id="minAnnealLen" value="18" min="10" max="60" step="1"
+               data-label="アニール域の最小" data-default="18"></div>
+      <div><label for="maxAnnealLen">アニール域の最大 <small>規定値 25 nt</small></label>
+        <input type="number" id="maxAnnealLen" value="25" min="10" max="60" step="1"
+               data-label="アニール域の最大" data-default="25"></div>
+      <div><label for="minUsage">使用頻度の下限 <small>規定値 80 %</small></label>
+        <input type="number" id="minUsage" value="80" min="0" max="100" step="5"
+               data-label="使用頻度の下限" data-default="80"></div>
+    </div>
+    <div id="diagnosticWrap">
+      <label for="diagnostic">診断用制限酵素サイト
+        <small>空欄なら候補を出すだけです。変異表記モードでのみ使います</small></label>
+      <input type="text" id="diagnostic" placeholder="例: BamHI">
+    </div>
+    <div class="actions">
+      <button type="button" class="tiny" id="resetDefaults">規定値に戻す</button>
+      <span class="hint">根拠は docs/20260826_calculations.md 第 26 節</span>
+    </div>
+  </details>
+  <div class="actions">
+    <button type="button" id="designButton" class="primary">プライマーを設計する</button>
+    <button type="button" id="resetDesign">やり直す</button>
+    <span class="hint">結果は下に出ます。</span>
+  </div>
+</div>
+
+<div id="result"></div>
+<div id="textPanel"></div>
+
+<div class="step aside" id="historySection">
+  <h2>保存した設計</h2>
+  <p class="hint">このブラウザの中だけに残ります。通信はしません。
+    サイトデータを消すと一緒に消えます。</p>
+  <div id="historyList"></div>
+</div>
+
+<div class="step aside">
+  <h2>Claude へのリクエスト</h2>
+  <label for="requestText">内容</label>
+  <textarea id="requestText" placeholder="例: 選択範囲を残基番号で微調整できるようにしてほしい"></textarea>
+  <label style="font-weight:400"><input type="checkbox" id="attachSettings" checked>
+    いまの設定（選択範囲・操作・条件）を添える <small>配列データは含めません</small></label>
+  <div class="actions"><button type="button" id="addRequest">追加する</button></div>
+  <div id="requestNotice"></div>
+  <div id="requestList"></div>
+</div>
+
+<div class="step aside">
+  <h2>このツールの計算を自分で検証する</h2>
+  <div class="actions"><button type="button" id="testButton">自己テストを実行する</button>
+    <span class="hint">手計算した期待値と照合します。</span></div>
+  <div id="testResult"></div>
+</div>
+
+<footer>
+本ツールは設計支援です。<strong>最終確認は個人で行ってください。</strong>
+</footer>
+
+<script>
